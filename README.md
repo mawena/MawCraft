@@ -41,8 +41,8 @@ Il faut lancer le petit serveur WebSocket du dossier [`server/`](server/) :
 
 ```bash
 cd server
-npm install     # installe 'ws'
-npm start       # écoute sur ws://127.0.0.1:8080
+pnpm install    # installe 'ws'
+pnpm start      # écoute sur ws://127.0.0.1:8080
 ```
 
 Ouvrez ensuite le jeu (servi par le serveur HTTP local), entrez un pseudo, cliquez

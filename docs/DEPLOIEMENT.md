@@ -31,20 +31,20 @@ Navigateur ──HTTPS──►  nginx  ──► sert index.html (fichier stati
 
 ### 2.1 Récupérer les fichiers sur le serveur
 
-Place le projet dans un dossier servi par nginx. On prend ici `/var/www/mawcraft`
+Place le projet dans un dossier servi par nginx. On prend ici `/var/www/html/Mawena/MawCraft`
 (adapte si ton `root` nginx pointe ailleurs).
 
 ```bash
-sudo mkdir -p /var/www/mawcraft
+sudo mkdir -p /var/www/html/Mawena/MawCraft
 # Copie index.html + le dossier server/ dedans (scp, git clone, rsync… au choix).
 # Exemple avec rsync depuis ta machine :
-#   rsync -av --exclude server/node_modules --exclude server/data ./ user@mawena.cloud:/var/www/mawcraft/
+#   rsync -av --exclude server/node_modules --exclude server/data ./ user@mawena.cloud:/var/www/html/Mawena/MawCraft/
 ```
 
 Arborescence attendue sur le serveur :
 
 ```
-/var/www/mawcraft/
+/var/www/html/Mawena/MawCraft/
 ├── index.html
 └── server/
     ├── server.js
@@ -57,16 +57,21 @@ Arborescence attendue sur le serveur :
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
 node --version   # doit afficher v20.x
+
+# pnpm via corepack (fourni avec Node 20)
+sudo corepack enable
+corepack prepare pnpm@latest --activate
+pnpm --version
 ```
 
 ### 2.3 Installer les dépendances du serveur
 
 ```bash
-cd /var/www/mawcraft/server
-sudo npm install --omit=dev      # installe 'ws' uniquement
+cd /var/www/html/Mawena/MawCraft/server
+pnpm install --prod              # installe 'ws' uniquement
 sudo mkdir -p data               # dossier des mondes sauvegardés
 # Donne la main à l'utilisateur qui fera tourner le service (voir 2.4)
-sudo chown -R www-data:www-data /var/www/mawcraft/server
+sudo chown -R www-data:www-data /var/www/html/Mawena/MawCraft/server
 ```
 
 ### 2.4 Lancer le serveur en service (systemd)
@@ -81,7 +86,7 @@ After=network.target
 [Service]
 Type=simple
 User=www-data
-WorkingDirectory=/var/www/mawcraft/server
+WorkingDirectory=/var/www/html/Mawena/MawCraft/server
 ExecStart=/usr/bin/node server.js
 Environment=PORT=8080
 Environment=HOST=127.0.0.1
@@ -129,7 +134,7 @@ server {
 
     # ... tes directives ssl_certificate existantes (Certbot) ...
 
-    root /var/www/mawcraft;
+    root /var/www/html/Mawena/MawCraft;
     index index.html;
 
     # Le jeu (fichier statique)
@@ -180,8 +185,8 @@ s'affiche aussi sous le bouton Jouer (« En ligne — N joueur(s) »).
 Le jeu est un simple fichier statique : **aucun redémarrage nécessaire**.
 
 ```bash
-# Copie le nouveau index.html vers /var/www/mawcraft/index.html
-rsync -av ./index.html user@mawena.cloud:/var/www/mawcraft/index.html
+# Copie le nouveau index.html vers /var/www/html/Mawena/MawCraft/index.html
+rsync -av ./index.html user@mawena.cloud:/var/www/html/Mawena/MawCraft/index.html
 ```
 
 Les joueurs voient la nouvelle version en **rechargeant la page** (Ctrl+F5 pour
@@ -192,11 +197,11 @@ forcer le cache si besoin).
 ```bash
 # 1) Copier les nouveaux fichiers (sans écraser node_modules ni data)
 rsync -av --exclude server/node_modules --exclude server/data \
-      ./ user@mawena.cloud:/var/www/mawcraft/
+      ./ user@mawena.cloud:/var/www/html/Mawena/MawCraft/
 
 # 2) Sur le serveur : mettre à jour les dépendances si package.json a changé
-cd /var/www/mawcraft/server
-sudo npm install --omit=dev
+cd /var/www/html/Mawena/MawCraft/server
+pnpm install --prod
 
 # 3) Redémarrer le service (sauvegarde automatique des mondes à l'arrêt)
 sudo systemctl restart mawcraft
@@ -219,10 +224,10 @@ Pour aller vite, un petit script sur le serveur :
 
 ```bash
 #!/usr/bin/env bash
-# /var/www/mawcraft/update.sh
+# /var/www/html/Mawena/MawCraft/update.sh
 set -e
-cd /var/www/mawcraft/server
-npm install --omit=dev
+cd /var/www/html/Mawena/MawCraft/server
+pnpm install --prod
 systemctl restart mawcraft
 echo "MawCraft mis à jour ✓"
 ```
@@ -231,9 +236,9 @@ echo "MawCraft mis à jour ✓"
 
 ## 4. Sauvegardes & maintenance
 
-- **Les mondes** vivent dans `/var/www/mawcraft/server/data/world-<seed>.json`.
+- **Les mondes** vivent dans `/var/www/html/Mawena/MawCraft/server/data/world-<seed>.json`.
   Sauvegarde ce dossier (cron + `tar`/`rsync`) pour ne rien perdre.
-- **Voir les mondes existants** : `ls -lh /var/www/mawcraft/server/data/`
+- **Voir les mondes existants** : `ls -lh /var/www/html/Mawena/MawCraft/server/data/`
 - **Repartir de zéro sur un monde** : arrête le service, supprime le fichier
   `world-<seed>.json` correspondant, redémarre.
 - **Le pare-feu** n'a besoin d'ouvrir que **80/443**. Le port 8080 reste en

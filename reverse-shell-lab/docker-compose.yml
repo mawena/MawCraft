@@ -1,0 +1,27 @@
+# Lab pédagogique : reverse shell + détection, 100 % isolé.
+# Les deux conteneurs t'appartiennent et vivent sur un réseau interne fermé,
+# sans accès à Internet. Rien ne sort de ta machine.
+services:
+  attacker:
+    build: .
+    container_name: lab-attacker
+    hostname: attacker
+    networks: [lab]
+    stdin_open: true
+    tty: true
+    # Le listener écoutera ici ; on l'ouvre à la main pour bien voir chaque étape.
+    command: sleep infinity
+
+  target:
+    build: .
+    container_name: lab-target
+    hostname: target
+    networks: [lab]
+    stdin_open: true
+    tty: true
+    command: sleep infinity
+
+networks:
+  lab:
+    driver: bridge
+    internal: true   # <-- réseau fermé : aucun accès à l'extérieur

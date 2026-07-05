@@ -2,7 +2,8 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Mini Minecraft</title>
+<title>MawCraft ⛏</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'><rect width='16' height='16' fill='%238b5a2b'/><rect x='2' y='9' width='2' height='2' fill='%236b4423'/><rect x='7' y='11' width='2' height='2' fill='%236b4423'/><rect x='11' y='8' width='2' height='2' fill='%236b4423'/><rect x='4' y='13' width='2' height='1' fill='%236b4423'/><rect width='16' height='6' fill='%235aa83a'/><rect y='0' width='16' height='1' fill='%2378c250'/><rect y='5' width='16' height='1' fill='%234a8a2f'/><rect x='3' y='6' width='2' height='2' fill='%235aa83a'/><rect x='9' y='6' width='2' height='1' fill='%235aa83a'/></svg>">
 <style>
   html, body { margin: 0; padding: 0; overflow: hidden; height: 100%; background: #000; }
   #crosshair {
@@ -40,6 +41,20 @@
   #overlay h1 { font-size: 32px; margin-bottom: 10px; }
   #overlay p { line-height: 1.7; }
   #overlay small { opacity: .7; }
+  #pseudo {
+    margin-top: 18px; padding: 10px 12px; width: 240px; max-width: 80vw;
+    font: 16px monospace; text-align: center; color: #fff;
+    background: rgba(255,255,255,.1); border: 2px solid #888; border-radius: 6px;
+    outline: none;
+  }
+  #pseudo:focus { border-color: #fff; }
+  #play {
+    margin-top: 12px; padding: 10px 28px; cursor: pointer;
+    font: bold 16px monospace; color: #142; background: #6fb53c;
+    border: none; border-radius: 6px;
+  }
+  #play:hover { background: #7ec94a; }
+  #netstatus { margin-top: 14px; font: 12px monospace; opacity: .8; min-height: 16px; }
 </style>
 </head>
 <body>
@@ -47,14 +62,16 @@
 <div id="info"></div>
 <div id="hotbar"></div>
 <div id="overlay">
-  <h1>⛏ Mini Minecraft</h1>
+  <h1>⛏ MawCraft</h1>
   <p>
-    Clique pour jouer<br><br>
     ZQSD / WASD — se déplacer &nbsp;|&nbsp; Espace — sauter / nager<br>
     Shift — sprinter &nbsp;|&nbsp; Clic gauche — casser &nbsp;|&nbsp; Clic droit — poser<br>
     1-7 ou molette — choisir un bloc &nbsp;|&nbsp; Échap — pause<br><br>
-    <small>Monde infini généré par seed — ajoute ?seed=12345 à l'URL pour rejouer le même monde</small>
+    <small>Même seed = même monde partagé. Donne le lien avec ?seed=… à tes amis pour jouer ensemble.</small>
   </p>
+  <input id="pseudo" maxlength="16" placeholder="Ton pseudo" autocomplete="off">
+  <button id="play">Jouer</button>
+  <div id="netstatus"></div>
 </div>
 
 <script type="importmap">
@@ -421,7 +438,7 @@ addEventListener('keyup', e => keys.delete(e.code));
 
 // ---------- Verrouillage du pointeur ----------
 const overlay = document.getElementById('overlay');
-overlay.addEventListener('click', () => renderer.domElement.requestPointerLock());
+// Le verrouillage du pointeur est déclenché par le bouton « Jouer » (voir section Multijoueur)
 document.addEventListener('pointerlockchange', () => {
   overlay.style.display = document.pointerLockElement ? 'none' : 'flex';
   keys.clear();
@@ -466,8 +483,10 @@ addEventListener('mousedown', e => {
     // un bloc cassé sous le niveau de la mer se remplit d'eau si l'eau le touche
     const nearWater = [[1,0,0],[-1,0,0],[0,1,0],[0,0,1],[0,0,-1]]
       .some(([dx, dy, dz]) => getBlock(x + dx, y + dy, z + dz) === WATER);
-    setBlock(x, y, z, y <= SEA && nearWater ? WATER : 0);
+    const newId = y <= SEA && nearWater ? WATER : 0;
+    setBlock(x, y, z, newId);
     rebuildAround(x, z);
+    sendBlock(x, y, z, newId);
   } else if (e.button === 2) {
     const [x, y, z] = target.adjacent;
     if (y < 0 || y >= HEIGHT) return;
@@ -475,6 +494,7 @@ addEventListener('mousedown', e => {
     setBlock(x, y, z, HOTBAR[activeSlot]);
     if (collides(player.pos)) { setBlock(x, y, z, previous); return; }
     rebuildAround(x, z);
+    sendBlock(x, y, z, HOTBAR[activeSlot]);
   }
 });
 addEventListener('contextmenu', e => e.preventDefault());
@@ -512,10 +532,194 @@ function updateInfo() {
     `Seed : ${SEED}\n` +
     `XYZ  : ${player.pos.x.toFixed(1)} / ${player.pos.y.toFixed(1)} / ${player.pos.z.toFixed(1)}\n` +
     `Chunks : ${chunkMeshes.size} affichés, ${chunkData.size} générés\n` +
+    `Joueurs : ${net.connected ? others.size + 1 : 1}${net.connected ? '' : ' (solo)'}\n` +
     `FPS  : ${fps}`;
 }
 
+// ---------- Multijoueur ----------
+// Le monde (terrain) est déjà identique pour une même seed. Le serveur ne
+// transporte que les positions des joueurs et les blocs modifiés (les « deltas »).
+const others = new Map(); // id -> { group, target:{x,y,z,yaw} }
+const net = { ws: null, id: null, connected: false, name: '' };
+
+const netStatusEl = document.getElementById('netstatus');
+const setNetStatus = t => { netStatusEl.textContent = t; };
+
+function wsURL() {
+  // En prod (HTTPS) nginx relaie /ws vers le serveur ; en local on vise le port 8080.
+  if (location.protocol === 'https:') return `wss://${location.host}/ws`;
+  return `ws://${location.hostname || 'localhost'}:8080`;
+}
+
+function playerColor(id) {
+  return new THREE.Color(`hsl(${(id * 47) % 360}, 65%, 55%)`);
+}
+
+function makeNameSprite(text) {
+  const c = document.createElement('canvas');
+  const ctx = c.getContext('2d');
+  ctx.font = 'bold 32px monospace';
+  const w = Math.ceil(ctx.measureText(text).width) + 20;
+  c.width = w; c.height = 44;
+  ctx.font = 'bold 32px monospace';
+  ctx.fillStyle = 'rgba(0,0,0,.5)';
+  ctx.fillRect(0, 0, w, 44);
+  ctx.fillStyle = '#fff';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 10, 24);
+  const tex = new THREE.CanvasTexture(c);
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
+  spr.scale.set((w / 44) * 0.6, 0.6, 1);
+  spr.position.y = 2.25;
+  return spr;
+}
+
+function addOther(id, name, x, y, z, yaw) {
+  if (id === net.id || others.has(id)) return;
+  const group = new THREE.Group();
+  const color = playerColor(id);
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(0.6, 1.2, 0.35),
+    new THREE.MeshLambertMaterial({ color })
+  );
+  body.position.y = 0.6;
+  const head = new THREE.Mesh(
+    new THREE.BoxGeometry(0.5, 0.5, 0.5),
+    new THREE.MeshLambertMaterial({ color: color.clone().multiplyScalar(0.8) })
+  );
+  head.position.y = 1.45;
+  group.add(body, head, makeNameSprite(name));
+  group.position.set(x, y, z);
+  group.rotation.y = yaw || 0;
+  scene.add(group);
+  others.set(id, { group, target: { x, y, z, yaw: yaw || 0 } });
+}
+
+function removeOther(id) {
+  const o = others.get(id);
+  if (!o) return;
+  o.group.traverse(obj => {
+    if (obj.geometry) obj.geometry.dispose();
+    if (obj.material) { if (obj.material.map) obj.material.map.dispose(); obj.material.dispose(); }
+  });
+  scene.remove(o.group);
+  others.delete(id);
+}
+
+function updateOthers(dt) {
+  const k = Math.min(1, dt * 12);
+  for (const o of others.values()) {
+    const g = o.group, t = o.target;
+    g.position.x += (t.x - g.position.x) * k;
+    g.position.y += (t.y - g.position.y) * k;
+    g.position.z += (t.z - g.position.z) * k;
+    let dyaw = t.yaw - g.rotation.y;
+    while (dyaw > Math.PI) dyaw -= Math.PI * 2;
+    while (dyaw < -Math.PI) dyaw += Math.PI * 2;
+    g.rotation.y += dyaw * k;
+  }
+}
+
+// Applique une modification de bloc reçue du serveur (ne reconstruit que si le chunk est affiché)
+function rebuildIfLoaded(cx, cz) {
+  if (chunkMeshes.has(cx + ',' + cz)) buildChunk(cx, cz);
+}
+function applyRemoteBlock(x, y, z, id) {
+  setBlock(x, y, z, id);
+  const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK);
+  const lx = x - cx * CHUNK, lz = z - cz * CHUNK;
+  rebuildIfLoaded(cx, cz);
+  if (lx === 0) rebuildIfLoaded(cx - 1, cz);
+  if (lx === CHUNK - 1) rebuildIfLoaded(cx + 1, cz);
+  if (lz === 0) rebuildIfLoaded(cx, cz - 1);
+  if (lz === CHUNK - 1) rebuildIfLoaded(cx, cz + 1);
+}
+function applyEdits(edits) {
+  const keys = Object.keys(edits);
+  if (!keys.length) return;
+  for (const k of keys) {
+    const [x, y, z] = k.split(',').map(Number);
+    setBlock(x, y, z, edits[k]);
+  }
+  // reconstruit les chunks déjà affichés ; les suivants se construiront déjà à jour
+  for (const cid of [...chunkMeshes.keys()]) {
+    const [cx, cz] = cid.split(',').map(Number);
+    buildChunk(cx, cz);
+  }
+}
+
+function sendBlock(x, y, z, id) {
+  if (net.connected && net.ws && net.ws.readyState === 1)
+    net.ws.send(JSON.stringify({ t: 'block', x, y, z, id }));
+}
+function sendMove() {
+  if (net.connected && net.ws && net.ws.readyState === 1)
+    net.ws.send(JSON.stringify({
+      t: 'move',
+      x: +player.pos.x.toFixed(2), y: +player.pos.y.toFixed(2), z: +player.pos.z.toFixed(2),
+      yaw: +player.yaw.toFixed(3), pitch: +player.pitch.toFixed(3),
+    }));
+}
+
+function connect() {
+  if (net.ws) return;
+  let ws;
+  try { ws = new WebSocket(wsURL()); }
+  catch { setNetStatus('Serveur injoignable (mode solo)'); return; }
+  net.ws = ws;
+  setNetStatus('Connexion…');
+  ws.onopen = () => {
+    net.connected = true;
+    ws.send(JSON.stringify({ t: 'join', seed: SEED, name: net.name }));
+  };
+  ws.onmessage = ev => {
+    let m; try { m = JSON.parse(ev.data); } catch { return; }
+    if (m.t === 'init') {
+      net.id = m.id;
+      for (const p of m.players) addOther(p.id, p.name, p.x, p.y, p.z, p.yaw);
+      applyEdits(m.edits);
+      setNetStatus(`En ligne — ${m.players.length + 1} joueur(s)`);
+    } else if (m.t === 'join') {
+      addOther(m.id, m.name, m.x, m.y, m.z, m.yaw);
+      setNetStatus(`En ligne — ${others.size + 1} joueur(s)`);
+    } else if (m.t === 'move') {
+      const o = others.get(m.id);
+      if (o) o.target = { x: m.x, y: m.y, z: m.z, yaw: m.yaw };
+      else addOther(m.id, 'Joueur', m.x, m.y, m.z, m.yaw);
+    } else if (m.t === 'leave') {
+      removeOther(m.id);
+      setNetStatus(`En ligne — ${others.size + 1} joueur(s)`);
+    } else if (m.t === 'block') {
+      applyRemoteBlock(m.x, m.y, m.z, m.id);
+    }
+  };
+  ws.onclose = () => {
+    net.connected = false; net.ws = null; net.id = null;
+    for (const id of [...others.keys()]) removeOther(id);
+    setNetStatus('Hors ligne — reconnexion…');
+    if (net.name) setTimeout(() => { if (!net.ws) connect(); }, 3000);
+  };
+  ws.onerror = () => setNetStatus('Serveur injoignable (mode solo)');
+}
+
+// Bouton « Jouer » : mémorise le pseudo, se connecte, verrouille le pointeur
+const pseudoEl = document.getElementById('pseudo');
+const playBtn = document.getElementById('play');
+pseudoEl.value = localStorage.getItem('mawcraft.pseudo') || '';
+function startPlay() {
+  net.name = (pseudoEl.value.trim() || 'Joueur').slice(0, 16);
+  localStorage.setItem('mawcraft.pseudo', net.name);
+  if (!net.ws) connect();
+  renderer.domElement.requestPointerLock();
+}
+playBtn.addEventListener('click', startPlay);
+pseudoEl.addEventListener('keydown', e => {
+  e.stopPropagation(); // ne pas déclencher les raccourcis du jeu en tapant
+  if (e.key === 'Enter') { e.preventDefault(); startPlay(); }
+});
+
 // ---------- Boucle de jeu ----------
+let lastMoveSent = 0;
 let lastTime = performance.now();
 function tick() {
   requestAnimationFrame(tick);
@@ -531,6 +735,8 @@ function tick() {
   }
 
   updateChunkStreaming();
+  updateOthers(dt);
+  if (now - lastMoveSent > 66) { lastMoveSent = now; sendMove(); }
 
   player.inWater = getBlock(
     Math.floor(player.pos.x), Math.floor(player.pos.y + 0.4), Math.floor(player.pos.z)

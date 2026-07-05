@@ -7,7 +7,17 @@ et le projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
-_Rien pour l'instant._
+### Ajouté
+
+- **Multijoueur (Phase 1)** : une même seed = un monde partagé.
+  - Serveur WebSocket Node.js (`server/`) qui relaie les positions et les blocs.
+  - On voit les autres joueurs bouger en temps réel (avatar + pseudo).
+  - Les blocs cassés/posés sont synchronisés entre les joueurs.
+  - **Persistance** des mondes : les modifications sont sauvegardées dans
+    `server/data/world-<seed>.json` et rechargées d'une session à l'autre.
+  - Champ pseudo + bouton « Jouer », reconnexion automatique, repli en mode solo
+    si le serveur est absent.
+  - Guide de déploiement/mise à jour `docs/DEPLOIEMENT.md` (Ubuntu 22.04 + nginx).
 
 ## [1.0.0] - 2026-07-05
 

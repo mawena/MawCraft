@@ -1,0 +1,17 @@
+{
+  "name": "mawcraft-server",
+  "version": "1.0.0",
+  "description": "Serveur multijoueur temps réel pour MawCraft (positions + blocs partagés et persistants).",
+  "type": "module",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

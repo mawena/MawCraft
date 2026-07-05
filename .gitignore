@@ -1,0 +1,9 @@
+# Dépendances du serveur
+server/node_modules/
+
+# Données des mondes sauvegardés (deltas de blocs)
+server/data/
+
+# Logs & divers
+*.log
+.DS_Store

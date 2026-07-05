@@ -16,6 +16,8 @@ compilation, aucune dépendance à installer.
 - **Atlas de textures pixel-art** généré par code (rien à télécharger).
 - **Physique** simple : gravité, saut, collisions, sprint.
 - **HUD de debug** (position, chunk, bloc sélectionné) et barre de blocs (hotbar).
+- **Multijoueur** : même seed = même monde partagé. On se voit bouger en temps réel,
+  les blocs cassés/posés sont synchronisés et **sauvegardés** entre les sessions.
 
 ## 🚀 Lancer le jeu
 
@@ -30,6 +32,26 @@ python3 -m http.server 8000
 
 > Three.js est chargé depuis le CDN unpkg — une connexion Internet est nécessaire
 > au premier chargement.
+
+Sans serveur, le jeu tourne en **solo** (il affiche « mode solo » et reste jouable).
+
+## 🌍 Jouer à plusieurs (multijoueur)
+
+Il faut lancer le petit serveur WebSocket du dossier [`server/`](server/) :
+
+```bash
+cd server
+npm install     # installe 'ws'
+npm start       # écoute sur ws://127.0.0.1:8080
+```
+
+Ouvrez ensuite le jeu (servi par le serveur HTTP local), entrez un pseudo, cliquez
+**Jouer**. Toute personne ouvrant la **même seed** rejoint le même monde, s'y voit,
+et partage les blocs — qui sont sauvegardés dans `server/data/world-<seed>.json`.
+
+En local, le client se connecte automatiquement à `ws://<hôte>:8080` ; en
+production (HTTPS), à `wss://<domaine>/ws` via nginx. Voir
+[docs/DEPLOIEMENT.md](docs/DEPLOIEMENT.md) pour l'hébergement.
 
 ## 🎮 Commandes
 
@@ -60,6 +82,11 @@ http://localhost:8000/?seed=12345
 ```
 MawCraft/
 ├── index.html          # Le jeu complet (Three.js, un seul fichier)
+├── server/             # Serveur multijoueur Node.js (WebSocket)
+│   ├── server.js
+│   └── package.json
+├── docs/
+│   └── DEPLOIEMENT.md  # Guide de déploiement/mise à jour (Ubuntu + nginx)
 ├── reverse-shell-lab/  # Labo de sécurité pédagogique isolé (voir son README)
 ├── README.md
 ├── CHANGELOG.md

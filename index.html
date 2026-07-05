@@ -438,7 +438,12 @@ addEventListener('keyup', e => keys.delete(e.code));
 
 // ---------- Verrouillage du pointeur ----------
 const overlay = document.getElementById('overlay');
-// Le verrouillage du pointeur est déclenché par le bouton « Jouer » (voir section Multijoueur)
+// Cliquer n'importe où sur l'écran d'accueil (sauf le champ pseudo) lance/reprend le jeu.
+// startPlay est défini plus bas (section Multijoueur) mais disponible au moment du clic.
+overlay.addEventListener('click', e => {
+  if (e.target && e.target.id === 'pseudo') return; // laisser saisir le pseudo
+  startPlay();
+});
 document.addEventListener('pointerlockchange', () => {
   overlay.style.display = document.pointerLockElement ? 'none' : 'flex';
   keys.clear();
@@ -710,11 +715,14 @@ function startPlay() {
   net.name = (pseudoEl.value.trim() || 'Joueur').slice(0, 16);
   localStorage.setItem('mawcraft.pseudo', net.name);
   if (!net.ws) connect();
-  renderer.domElement.requestPointerLock();
+  // le champ pseudo / le bouton ne doivent plus capter le clavier une fois en jeu,
+  // sinon les touches de déplacement ne parviennent jamais au jeu
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  const req = renderer.domElement.requestPointerLock();
+  if (req && req.catch) req.catch(() => {}); // ignore un éventuel rejet du verrouillage
 }
-playBtn.addEventListener('click', startPlay);
+// Le clic sur le bouton « Jouer » remonte jusqu'à l'overlay, qui appelle startPlay().
 pseudoEl.addEventListener('keydown', e => {
-  e.stopPropagation(); // ne pas déclencher les raccourcis du jeu en tapant
   if (e.key === 'Enter') { e.preventDefault(); startPlay(); }
 });
 

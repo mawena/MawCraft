@@ -55,6 +55,32 @@
   }
   #play:hover { background: #7ec94a; }
   #netstatus { margin-top: 14px; font: 12px monospace; opacity: .8; min-height: 16px; }
+
+  /* ---------- Commandes tactiles (mobile) ---------- */
+  #touch { display: none; position: fixed; inset: 0; z-index: 15; pointer-events: none; }
+  #touch > * { pointer-events: auto; }
+  #lookzone { position: absolute; right: 0; top: 0; width: 60%; height: 100%; touch-action: none; }
+  #joy {
+    position: absolute; left: 22px; bottom: 22px; width: 120px; height: 120px;
+    border-radius: 50%; background: rgba(255,255,255,.12);
+    border: 2px solid rgba(255,255,255,.35); touch-action: none;
+  }
+  #joyknob {
+    position: absolute; left: 50%; top: 50%; width: 52px; height: 52px;
+    margin: -26px 0 0 -26px; border-radius: 50%; background: rgba(255,255,255,.55);
+  }
+  .tbtn {
+    position: absolute; width: 66px; height: 66px; border-radius: 50%;
+    background: rgba(255,255,255,.15); border: 2px solid rgba(255,255,255,.4);
+    color: #fff; font: 26px monospace; text-shadow: 1px 1px 0 #000;
+    display: flex; align-items: center; justify-content: center;
+    touch-action: none; user-select: none; -webkit-user-select: none;
+  }
+  .tbtn:active { background: rgba(255,255,255,.32); }
+  #btnJump  { right: 26px;  bottom: 168px; }
+  #btnBreak { right: 104px; bottom: 90px; }
+  #btnPlace { right: 26px;  bottom: 90px; }
+  #btnPause { right: 12px;  top: 12px; width: 46px; height: 46px; font-size: 20px; }
 </style>
 </head>
 <body>
@@ -72,6 +98,15 @@
   <input id="pseudo" maxlength="16" placeholder="Ton pseudo" autocomplete="off">
   <button id="play">Jouer</button>
   <div id="netstatus"></div>
+</div>
+
+<div id="touch">
+  <div id="lookzone"></div>
+  <div id="joy"><div id="joyknob"></div></div>
+  <div id="btnPause" class="tbtn">☰</div>
+  <div id="btnJump" class="tbtn">⭡</div>
+  <div id="btnBreak" class="tbtn">⛏</div>
+  <div id="btnPlace" class="tbtn">▣</div>
 </div>
 
 <script type="importmap">
@@ -455,6 +490,17 @@ document.addEventListener('mousemove', e => {
   player.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, player.pitch));
 });
 
+// ---------- Commandes tactiles (mobile / tablette) ----------
+// Sur un appareil tactile il n'y a ni clavier (ZQSD) ni verrouillage de pointeur :
+// on pilote avec un joystick virtuel + glisser pour regarder + boutons d'action.
+const IS_TOUCH = matchMedia('(pointer: coarse)').matches;
+const touchUI = document.getElementById('touch');
+let touchActive = false;          // vrai quand on joue sur tactile
+const moveInput = { x: 0, y: 0 }; // apport du joystick : x = latéral, y = avant
+let touchJump = false;
+// « en train de jouer » : soit pointeur verrouillé (bureau), soit session tactile
+const isPlaying = () => !!document.pointerLockElement || touchActive;
+
 // ---------- Visée et blocs ----------
 const raycaster = new THREE.Raycaster();
 raycaster.far = REACH;
@@ -479,28 +525,34 @@ function pickBlock() {
   return { block, adjacent };
 }
 
-addEventListener('mousedown', e => {
-  if (!document.pointerLockElement) return;
+function breakBlock() {
   const target = pickBlock();
   if (!target) return;
-  if (e.button === 0) {
-    const [x, y, z] = target.block;
-    // un bloc cassé sous le niveau de la mer se remplit d'eau si l'eau le touche
-    const nearWater = [[1,0,0],[-1,0,0],[0,1,0],[0,0,1],[0,0,-1]]
-      .some(([dx, dy, dz]) => getBlock(x + dx, y + dy, z + dz) === WATER);
-    const newId = y <= SEA && nearWater ? WATER : 0;
-    setBlock(x, y, z, newId);
-    rebuildAround(x, z);
-    sendBlock(x, y, z, newId);
-  } else if (e.button === 2) {
-    const [x, y, z] = target.adjacent;
-    if (y < 0 || y >= HEIGHT) return;
-    const previous = getBlock(x, y, z);
-    setBlock(x, y, z, HOTBAR[activeSlot]);
-    if (collides(player.pos)) { setBlock(x, y, z, previous); return; }
-    rebuildAround(x, z);
-    sendBlock(x, y, z, HOTBAR[activeSlot]);
-  }
+  const [x, y, z] = target.block;
+  // un bloc cassé sous le niveau de la mer se remplit d'eau si l'eau le touche
+  const nearWater = [[1,0,0],[-1,0,0],[0,1,0],[0,0,1],[0,0,-1]]
+    .some(([dx, dy, dz]) => getBlock(x + dx, y + dy, z + dz) === WATER);
+  const newId = y <= SEA && nearWater ? WATER : 0;
+  setBlock(x, y, z, newId);
+  rebuildAround(x, z);
+  sendBlock(x, y, z, newId);
+}
+function placeBlock() {
+  const target = pickBlock();
+  if (!target) return;
+  const [x, y, z] = target.adjacent;
+  if (y < 0 || y >= HEIGHT) return;
+  const previous = getBlock(x, y, z);
+  setBlock(x, y, z, HOTBAR[activeSlot]);
+  if (collides(player.pos)) { setBlock(x, y, z, previous); return; }
+  rebuildAround(x, z);
+  sendBlock(x, y, z, HOTBAR[activeSlot]);
+}
+
+addEventListener('mousedown', e => {
+  if (!document.pointerLockElement) return;
+  if (e.button === 0) breakBlock();
+  else if (e.button === 2) placeBlock();
 });
 addEventListener('contextmenu', e => e.preventDefault());
 addEventListener('wheel', e => {
@@ -718,13 +770,84 @@ function startPlay() {
   // le champ pseudo / le bouton ne doivent plus capter le clavier une fois en jeu,
   // sinon les touches de déplacement ne parviennent jamais au jeu
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-  const req = renderer.domElement.requestPointerLock();
-  if (req && req.catch) req.catch(() => {}); // ignore un éventuel rejet du verrouillage
+  if (IS_TOUCH) {
+    // pas de verrouillage de pointeur sur tactile : on affiche les commandes
+    touchActive = true;
+    overlay.style.display = 'none';
+    touchUI.style.display = 'block';
+  } else {
+    const req = renderer.domElement.requestPointerLock();
+    if (req && req.catch) req.catch(() => {}); // ignore un éventuel rejet du verrouillage
+  }
 }
 // Le clic sur le bouton « Jouer » remonte jusqu'à l'overlay, qui appelle startPlay().
 pseudoEl.addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); startPlay(); }
 });
+
+// Câblage des commandes tactiles (uniquement si appareil tactile)
+if (IS_TOUCH) {
+  const joy = document.getElementById('joy');
+  const knob = document.getElementById('joyknob');
+  const look = document.getElementById('lookzone');
+  const R = 45; // rayon utile du joystick en px
+
+  let joyId = null;
+  joy.addEventListener('pointerdown', e => {
+    joyId = e.pointerId; joy.setPointerCapture(e.pointerId); e.preventDefault();
+  });
+  joy.addEventListener('pointermove', e => {
+    if (e.pointerId !== joyId) return;
+    const r = joy.getBoundingClientRect();
+    let dx = e.clientX - (r.left + r.width / 2);
+    let dy = e.clientY - (r.top + r.height / 2);
+    const len = Math.hypot(dx, dy) || 1;
+    if (len > R) { dx = dx / len * R; dy = dy / len * R; }
+    knob.style.transform = `translate(${dx}px, ${dy}px)`;
+    moveInput.x = dx / R;   // droite = +
+    moveInput.y = -dy / R;  // haut = avancer
+  });
+  const joyEnd = e => {
+    if (e.pointerId !== joyId) return;
+    joyId = null; moveInput.x = moveInput.y = 0; knob.style.transform = 'translate(0,0)';
+  };
+  joy.addEventListener('pointerup', joyEnd);
+  joy.addEventListener('pointercancel', joyEnd);
+
+  let lookId = null, lx = 0, ly = 0;
+  look.addEventListener('pointerdown', e => {
+    lookId = e.pointerId; lx = e.clientX; ly = e.clientY;
+    look.setPointerCapture(e.pointerId); e.preventDefault();
+  });
+  look.addEventListener('pointermove', e => {
+    if (e.pointerId !== lookId) return;
+    const dx = e.clientX - lx, dy = e.clientY - ly;
+    lx = e.clientX; ly = e.clientY;
+    player.yaw -= dx * 0.005;
+    player.pitch -= dy * 0.005;
+    player.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, player.pitch));
+  });
+  const lookEnd = e => { if (e.pointerId === lookId) lookId = null; };
+  look.addEventListener('pointerup', lookEnd);
+  look.addEventListener('pointercancel', lookEnd);
+
+  const bind = (id, onDown, onUp) => {
+    const el = document.getElementById(id);
+    el.addEventListener('pointerdown', e => { e.preventDefault(); onDown(); });
+    if (onUp) {
+      el.addEventListener('pointerup', onUp);
+      el.addEventListener('pointercancel', onUp);
+    }
+  };
+  bind('btnJump', () => { touchJump = true; }, () => { touchJump = false; });
+  bind('btnBreak', () => breakBlock());
+  bind('btnPlace', () => placeBlock());
+  bind('btnPause', () => {
+    touchActive = false;
+    touchUI.style.display = 'none';
+    overlay.style.display = 'flex';
+  });
+}
 
 // ---------- Boucle de jeu ----------
 let lastMoveSent = 0;
@@ -750,18 +873,21 @@ function tick() {
     Math.floor(player.pos.x), Math.floor(player.pos.y + 0.4), Math.floor(player.pos.z)
   ) === WATER;
 
-  if (document.pointerLockElement) {
-    const forward = (keys.has('KeyW') || keys.has('KeyZ') ? 1 : 0) - (keys.has('KeyS') ? 1 : 0);
-    const strafe  = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') || keys.has('KeyQ') ? 1 : 0);
+  if (isPlaying()) {
+    let forward = (keys.has('KeyW') || keys.has('KeyZ') ? 1 : 0) - (keys.has('KeyS') ? 1 : 0) + moveInput.y;
+    let strafe  = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') || keys.has('KeyQ') ? 1 : 0) + moveInput.x;
+    forward = Math.max(-1, Math.min(1, forward));
+    strafe  = Math.max(-1, Math.min(1, strafe));
     const sprint = keys.has('ShiftLeft') || keys.has('ShiftRight') ? SPRINT_MULT : 1;
     const speed = SPEED * sprint * (player.inWater ? 0.6 : 1);
     const sin = Math.sin(player.yaw), cos = Math.cos(player.yaw);
-    let dx = (-sin * forward + cos * strafe);
-    let dz = (-cos * forward - sin * strafe);
+    const dx = (-sin * forward + cos * strafe);
+    const dz = (-cos * forward - sin * strafe);
+    const moving = Math.abs(forward) > 0.05 || Math.abs(strafe) > 0.05;
     const len = Math.hypot(dx, dz) || 1;
-    player.vel.x = (dx / len) * speed * (forward || strafe ? 1 : 0);
-    player.vel.z = (dz / len) * speed * (forward || strafe ? 1 : 0);
-    if (keys.has('Space')) {
+    player.vel.x = (dx / len) * speed * (moving ? 1 : 0);
+    player.vel.z = (dz / len) * speed * (moving ? 1 : 0);
+    if (keys.has('Space') || touchJump) {
       if (player.inWater) player.vel.y = Math.min(player.vel.y + 30 * dt, 4);
       else if (player.onGround) player.vel.y = JUMP_SPEED;
     }
@@ -808,7 +934,7 @@ function tick() {
   scene.fog.near = headInWater ? 1 : RENDER_DIST * CHUNK * 0.55;
   scene.fog.far = headInWater ? 18 : RENDER_DIST * CHUNK * 0.95;
 
-  const target = document.pointerLockElement ? pickBlock() : null;
+  const target = isPlaying() ? pickBlock() : null;
   highlight.visible = !!target;
   if (target) highlight.position.set(target.block[0] + 0.5, target.block[1] + 0.5, target.block[2] + 0.5);
 

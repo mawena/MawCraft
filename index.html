@@ -1,952 +1,1111 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
-<meta charset="UTF-8">
-<title>MawCraft ⛏</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'><rect width='16' height='16' fill='%238b5a2b'/><rect x='2' y='9' width='2' height='2' fill='%236b4423'/><rect x='7' y='11' width='2' height='2' fill='%236b4423'/><rect x='11' y='8' width='2' height='2' fill='%236b4423'/><rect x='4' y='13' width='2' height='1' fill='%236b4423'/><rect width='16' height='6' fill='%235aa83a'/><rect y='0' width='16' height='1' fill='%2378c250'/><rect y='5' width='16' height='1' fill='%234a8a2f'/><rect x='3' y='6' width='2' height='2' fill='%235aa83a'/><rect x='9' y='6' width='2' height='1' fill='%235aa83a'/></svg>">
-<style>
-  html, body { margin: 0; padding: 0; overflow: hidden; height: 100%; background: #000; }
-  #crosshair {
-    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%);
-    color: #fff; font: 20px monospace; pointer-events: none;
-    text-shadow: 0 0 2px #000; z-index: 10;
-  }
-  #info {
-    position: fixed; left: 8px; top: 8px; z-index: 10; pointer-events: none;
-    color: #fff; font: 12px monospace; text-shadow: 1px 1px 0 #000;
-    background: rgba(0,0,0,.25); padding: 6px 8px; border-radius: 4px;
-    white-space: pre; line-height: 1.5;
-  }
-  #hotbar {
-    position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%);
-    display: flex; gap: 4px; z-index: 10;
-  }
-  .slot {
-    width: 44px; height: 44px; border: 3px solid #555; border-radius: 4px;
-    background-color: #222; box-sizing: border-box;
-    image-rendering: pixelated; background-size: cover;
-    position: relative;
-  }
-  .slot.active { border-color: #fff; }
-  .slot span {
-    position: absolute; left: 3px; top: 1px; color: #fff;
-    font: bold 11px monospace; text-shadow: 1px 1px 0 #000;
-  }
-  #overlay {
-    position: fixed; inset: 0; z-index: 20;
-    background: rgba(0,0,0,.6); color: #fff;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    font: 16px monospace; text-align: center; cursor: pointer;
-  }
-  #overlay h1 { font-size: 32px; margin-bottom: 10px; }
-  #overlay p { line-height: 1.7; }
-  #overlay small { opacity: .7; }
-  #pseudo {
-    margin-top: 18px; padding: 10px 12px; width: 240px; max-width: 80vw;
-    font: 16px monospace; text-align: center; color: #fff;
-    background: rgba(255,255,255,.1); border: 2px solid #888; border-radius: 6px;
-    outline: none;
-  }
-  #pseudo:focus { border-color: #fff; }
-  #play {
-    margin-top: 12px; padding: 10px 28px; cursor: pointer;
-    font: bold 16px monospace; color: #142; background: #6fb53c;
-    border: none; border-radius: 6px;
-  }
-  #play:hover { background: #7ec94a; }
-  #netstatus { margin-top: 14px; font: 12px monospace; opacity: .8; min-height: 16px; }
+  <meta charset="UTF-8">
+  <title>MawCraft ⛏</title>
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'><rect width='16' height='16' fill='%238b5a2b'/><rect x='2' y='9' width='2' height='2' fill='%236b4423'/><rect x='7' y='11' width='2' height='2' fill='%236b4423'/><rect x='11' y='8' width='2' height='2' fill='%236b4423'/><rect x='4' y='13' width='2' height='1' fill='%236b4423'/><rect width='16' height='6' fill='%235aa83a'/><rect y='0' width='16' height='1' fill='%2378c250'/><rect y='5' width='16' height='1' fill='%234a8a2f'/><rect x='3' y='6' width='2' height='2' fill='%235aa83a'/><rect x='9' y='6' width='2' height='1' fill='%235aa83a'/></svg>">
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      height: 100%;
+      background: #000;
+    }
 
-  /* ---------- Commandes tactiles (mobile) ---------- */
-  #touch { display: none; position: fixed; inset: 0; z-index: 15; pointer-events: none; }
-  #touch > * { pointer-events: auto; }
-  #lookzone { position: absolute; right: 0; top: 0; width: 60%; height: 100%; touch-action: none; }
-  #joy {
-    position: absolute; left: 22px; bottom: 22px; width: 120px; height: 120px;
-    border-radius: 50%; background: rgba(255,255,255,.12);
-    border: 2px solid rgba(255,255,255,.35); touch-action: none;
-  }
-  #joyknob {
-    position: absolute; left: 50%; top: 50%; width: 52px; height: 52px;
-    margin: -26px 0 0 -26px; border-radius: 50%; background: rgba(255,255,255,.55);
-  }
-  .tbtn {
-    position: absolute; width: 66px; height: 66px; border-radius: 50%;
-    background: rgba(255,255,255,.15); border: 2px solid rgba(255,255,255,.4);
-    color: #fff; font: 26px monospace; text-shadow: 1px 1px 0 #000;
-    display: flex; align-items: center; justify-content: center;
-    touch-action: none; user-select: none; -webkit-user-select: none;
-  }
-  .tbtn:active { background: rgba(255,255,255,.32); }
-  #btnJump  { right: 26px;  bottom: 168px; }
-  #btnBreak { right: 104px; bottom: 90px; }
-  #btnPlace { right: 26px;  bottom: 90px; }
-  #btnPause { right: 12px;  top: 12px; width: 46px; height: 46px; font-size: 20px; }
-</style>
+    #crosshair {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      color: #fff;
+      font: 20px monospace;
+      pointer-events: none;
+      text-shadow: 0 0 2px #000;
+      z-index: 10;
+    }
+
+    #info {
+      position: fixed;
+      left: 8px;
+      top: 8px;
+      z-index: 10;
+      pointer-events: none;
+      color: #fff;
+      font: 12px monospace;
+      text-shadow: 1px 1px 0 #000;
+      background: rgba(0, 0, 0, .25);
+      padding: 6px 8px;
+      border-radius: 4px;
+      white-space: pre;
+      line-height: 1.5;
+    }
+
+    #hotbar {
+      position: fixed;
+      left: 50%;
+      bottom: 12px;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 4px;
+      z-index: 10;
+    }
+
+    .slot {
+      width: 44px;
+      height: 44px;
+      border: 3px solid #555;
+      border-radius: 4px;
+      background-color: #222;
+      box-sizing: border-box;
+      image-rendering: pixelated;
+      background-size: cover;
+      position: relative;
+    }
+
+    .slot.active {
+      border-color: #fff;
+    }
+
+    .slot span {
+      position: absolute;
+      left: 3px;
+      top: 1px;
+      color: #fff;
+      font: bold 11px monospace;
+      text-shadow: 1px 1px 0 #000;
+    }
+
+    #overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      background: rgba(0, 0, 0, .6);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font: 16px monospace;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    #overlay h1 {
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+
+    #overlay p {
+      line-height: 1.7;
+    }
+
+    #overlay small {
+      opacity: .7;
+    }
+
+    #pseudo {
+      margin-top: 18px;
+      padding: 10px 12px;
+      width: 240px;
+      max-width: 80vw;
+      font: 16px monospace;
+      text-align: center;
+      color: #fff;
+      background: rgba(255, 255, 255, .1);
+      border: 2px solid #888;
+      border-radius: 6px;
+      outline: none;
+    }
+
+    #pseudo:focus {
+      border-color: #fff;
+    }
+
+    #play {
+      margin-top: 12px;
+      padding: 10px 28px;
+      cursor: pointer;
+      font: bold 16px monospace;
+      color: #142;
+      background: #6fb53c;
+      border: none;
+      border-radius: 6px;
+    }
+
+    #play:hover {
+      background: #7ec94a;
+    }
+
+    #netstatus {
+      margin-top: 14px;
+      font: 12px monospace;
+      opacity: .8;
+      min-height: 16px;
+    }
+
+    /* ---------- Commandes tactiles (mobile) ---------- */
+    #touch {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 15;
+      pointer-events: none;
+    }
+
+    #touch>* {
+      pointer-events: auto;
+    }
+
+    #lookzone {
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: 60%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    #joy {
+      position: absolute;
+      left: 22px;
+      bottom: 22px;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .12);
+      border: 2px solid rgba(255, 255, 255, .35);
+      touch-action: none;
+    }
+
+    #joyknob {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 52px;
+      height: 52px;
+      margin: -26px 0 0 -26px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .55);
+    }
+
+    .tbtn {
+      position: absolute;
+      width: 66px;
+      height: 66px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .15);
+      border: 2px solid rgba(255, 255, 255, .4);
+      color: #fff;
+      font: 26px monospace;
+      text-shadow: 1px 1px 0 #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .tbtn:active {
+      background: rgba(255, 255, 255, .32);
+    }
+
+    #btnJump {
+      right: 26px;
+      bottom: 168px;
+    }
+
+    #btnBreak {
+      right: 104px;
+      bottom: 90px;
+    }
+
+    #btnPlace {
+      right: 26px;
+      bottom: 90px;
+    }
+
+    #btnPause {
+      right: 12px;
+      top: 12px;
+      width: 46px;
+      height: 46px;
+      font-size: 20px;
+    }
+  </style>
 </head>
+
 <body>
-<div id="crosshair">+</div>
-<div id="info"></div>
-<div id="hotbar"></div>
-<div id="overlay">
-  <h1>⛏ MawCraft</h1>
-  <p>
-    ZQSD / WASD — se déplacer &nbsp;|&nbsp; Espace — sauter / nager<br>
-    Shift — sprinter &nbsp;|&nbsp; Clic gauche — casser &nbsp;|&nbsp; Clic droit — poser<br>
-    1-7 ou molette — choisir un bloc &nbsp;|&nbsp; Échap — pause<br><br>
-    <small>Même seed = même monde partagé. Donne le lien avec ?seed=… à tes amis pour jouer ensemble.</small>
-  </p>
-  <input id="pseudo" maxlength="16" placeholder="Ton pseudo" autocomplete="off">
-  <button id="play">Jouer</button>
-  <div id="netstatus"></div>
-</div>
+  <div id="crosshair">+</div>
+  <div id="info"></div>
+  <div id="hotbar"></div>
+  <div id="overlay">
+    <h1>⛏ MawCraft</h1>
+    <p>
+      ZQSD / WASD — se déplacer &nbsp;|&nbsp; Espace — sauter / nager<br>
+      Shift — sprinter &nbsp;|&nbsp; Clic gauche — casser &nbsp;|&nbsp; Clic droit — poser<br>
+      1-7 ou molette — choisir un bloc &nbsp;|&nbsp; Échap — pause<br><br>
+      <small>Même seed = même monde partagé. Donne le lien avec ?seed=… à tes amis pour jouer ensemble.</small>
+    </p>
+    <input id="pseudo" maxlength="16" placeholder="Ton pseudo" autocomplete="off">
+    <button id="play">Jouer</button>
+    <div id="netstatus"></div>
+  </div>
 
-<div id="touch">
-  <div id="lookzone"></div>
-  <div id="joy"><div id="joyknob"></div></div>
-  <div id="btnPause" class="tbtn">☰</div>
-  <div id="btnJump" class="tbtn">⭡</div>
-  <div id="btnBreak" class="tbtn">⛏</div>
-  <div id="btnPlace" class="tbtn">▣</div>
-</div>
+  <div id="touch">
+    <div id="lookzone"></div>
+    <div id="joy">
+      <div id="joyknob"></div>
+    </div>
+    <div id="btnPause" class="tbtn">☰</div>
+    <div id="btnJump" class="tbtn">⭡</div>
+    <div id="btnBreak" class="tbtn">⛏</div>
+    <div id="btnPlace" class="tbtn">▣</div>
+  </div>
 
-<script type="importmap">
+  <script type="importmap">
 { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
 </script>
-<script type="module">
-import * as THREE from 'three';
+  <script type="module">
+    import * as THREE from 'three';
 
-// ---------- Configuration ----------
-const CHUNK = 16;
-const HEIGHT = 48;
-const SEA = 10;              // niveau de la mer
-const RENDER_DIST = 6;       // rayon de chunks affichés autour du joueur
-const UNLOAD_DIST = 8;       // au-delà, on décharge le maillage
-const CHUNKS_PER_FRAME = 2;  // budget de construction par frame
-const GRAVITY = 24;
-const JUMP_SPEED = 8.2;
-const SPEED = 5.5;
-const SPRINT_MULT = 1.6;
-const REACH = 6;
+    // ---------- Configuration ----------
+    const CHUNK = 16;
+    const HEIGHT = 48;
+    const SEA = 10;              // niveau de la mer
+    const RENDER_DIST = 6;       // rayon de chunks affichés autour du joueur
+    const UNLOAD_DIST = 8;       // au-delà, on décharge le maillage
+    const CHUNKS_PER_FRAME = 2;  // budget de construction par frame
+    const GRAVITY = 24;
+    const JUMP_SPEED = 8.2;
+    const SPEED = 5.5;
+    const SPRINT_MULT = 1.6;
+    const REACH = 6;
 
-// ---------- Seed ----------
-const params = new URLSearchParams(location.search);
-const SEED = (parseInt(params.get('seed')) || Math.floor(Math.random() * 1e9)) >>> 0;
-history.replaceState(null, '', '?seed=' + SEED);
+    // ---------- Seed ----------
+    const params = new URLSearchParams(location.search);
+    const SEED = (parseInt(params.get('seed')) || Math.floor(Math.random() * 1e9)) >>> 0;
+    history.replaceState(null, '', '?seed=' + SEED);
 
-// ---------- Types de blocs ----------
-const TILES = {
-  grassTop: 0, grassSide: 1, dirt: 2, stone: 3, sand: 4,
-  logSide: 5, logTop: 6, leaves: 7, planks: 8,
-};
-const WATER = 8; // id de bloc spécial, non solide, maillage séparé
-const BLOCKS = {
-  1: { name: 'Herbe',    top: TILES.grassTop, side: TILES.grassSide, bottom: TILES.dirt },
-  2: { name: 'Terre',    top: TILES.dirt,     side: TILES.dirt,      bottom: TILES.dirt },
-  3: { name: 'Pierre',   top: TILES.stone,    side: TILES.stone,     bottom: TILES.stone },
-  4: { name: 'Sable',    top: TILES.sand,     side: TILES.sand,      bottom: TILES.sand },
-  5: { name: 'Bois',     top: TILES.logTop,   side: TILES.logSide,   bottom: TILES.logTop },
-  6: { name: 'Feuilles', top: TILES.leaves,   side: TILES.leaves,    bottom: TILES.leaves },
-  7: { name: 'Planches', top: TILES.planks,   side: TILES.planks,    bottom: TILES.planks },
-};
-const HOTBAR = [1, 2, 3, 4, 5, 6, 7];
-const isSolid = id => id !== 0 && id !== WATER;
+    // ---------- Types de blocs ----------
+    const TILES = {
+      grassTop: 0, grassSide: 1, dirt: 2, stone: 3, sand: 4,
+      logSide: 5, logTop: 6, leaves: 7, planks: 8,
+    };
+    const WATER = 8; // id de bloc spécial, non solide, maillage séparé
+    const BLOCKS = {
+      1: { name: 'Herbe', top: TILES.grassTop, side: TILES.grassSide, bottom: TILES.dirt },
+      2: { name: 'Terre', top: TILES.dirt, side: TILES.dirt, bottom: TILES.dirt },
+      3: { name: 'Pierre', top: TILES.stone, side: TILES.stone, bottom: TILES.stone },
+      4: { name: 'Sable', top: TILES.sand, side: TILES.sand, bottom: TILES.sand },
+      5: { name: 'Bois', top: TILES.logTop, side: TILES.logSide, bottom: TILES.logTop },
+      6: { name: 'Feuilles', top: TILES.leaves, side: TILES.leaves, bottom: TILES.leaves },
+      7: { name: 'Planches', top: TILES.planks, side: TILES.planks, bottom: TILES.planks },
+    };
+    const HOTBAR = [1, 2, 3, 4, 5, 6, 7];
+    const isSolid = id => id !== 0 && id !== WATER;
 
-// ---------- Atlas de textures généré en pixel-art ----------
-const TILE_PX = 16, N_TILES = 9;
-const atlasCanvas = document.createElement('canvas');
-atlasCanvas.width = TILE_PX * N_TILES;
-atlasCanvas.height = TILE_PX;
-{
-  const ctx = atlasCanvas.getContext('2d');
-  let s = 1234;
-  const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
-  const drawTile = (i, base, speckles, amount = 40) => {
-    ctx.fillStyle = base;
-    ctx.fillRect(i * TILE_PX, 0, TILE_PX, TILE_PX);
-    for (let n = 0; n < amount; n++) {
-      ctx.fillStyle = speckles[Math.floor(rnd() * speckles.length)];
-      ctx.fillRect(i * TILE_PX + Math.floor(rnd() * TILE_PX), Math.floor(rnd() * TILE_PX), 1, 1);
-    }
-  };
-  drawTile(TILES.grassTop, '#5da130', ['#4c8a26', '#6fb53c', '#559a2b']);
-  drawTile(TILES.dirt,     '#79553a', ['#6a4a32', '#8a6244', '#5e4128']);
-  drawTile(TILES.grassSide, '#79553a', ['#6a4a32', '#8a6244', '#5e4128']);
-  ctx.fillStyle = '#5da130';
-  ctx.fillRect(TILES.grassSide * TILE_PX, 0, TILE_PX, 4);
-  for (let n = 0; n < 10; n++) {
-    ctx.fillRect(TILES.grassSide * TILE_PX + Math.floor(rnd() * TILE_PX), 4, 1, 1 + Math.floor(rnd() * 2));
-  }
-  drawTile(TILES.stone,  '#8a8a8a', ['#7b7b7b', '#999999', '#6f6f6f']);
-  drawTile(TILES.sand,   '#dcd29b', ['#cfc48d', '#e8dfae', '#c6bb82']);
-  drawTile(TILES.logSide,'#6b4f2e', ['#5a4126', '#7d5d38', '#4e3820'], 60);
-  drawTile(TILES.logTop, '#a3814f', ['#8f7043', '#6b4f2e']);
-  ctx.strokeStyle = '#6b4f2e';
-  ctx.strokeRect(TILES.logTop * TILE_PX + 3.5, 3.5, 9, 9);
-  drawTile(TILES.leaves, '#3e7a1f', ['#336618', '#4c9328', '#2c5a13'], 70);
-  drawTile(TILES.planks, '#b08d55', ['#a07d47', '#c09d63'], 30);
-  ctx.fillStyle = '#8a6a3c';
-  for (const y of [3, 7, 11]) ctx.fillRect(TILES.planks * TILE_PX, y, TILE_PX, 1);
-}
-const atlasTexture = new THREE.CanvasTexture(atlasCanvas);
-atlasTexture.magFilter = THREE.NearestFilter;
-atlasTexture.minFilter = THREE.NearestFilter;
-atlasTexture.generateMipmaps = false;
-atlasTexture.colorSpace = THREE.SRGBColorSpace;
-
-// ---------- Bruit seedé ----------
-function hash(x, z) {
-  let h = (x | 0) * 374761393 + (z | 0) * 668265263 + SEED * 2246822519;
-  h = (h ^ (h >>> 13)) * 1274126177;
-  return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
-}
-function smoothNoise(x, z) {
-  const xi = Math.floor(x), zi = Math.floor(z);
-  const xf = x - xi, zf = z - zi;
-  const u = xf * xf * (3 - 2 * xf), v = zf * zf * (3 - 2 * zf);
-  const a = hash(xi, zi), b = hash(xi + 1, zi), c = hash(xi, zi + 1), d = hash(xi + 1, zi + 1);
-  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
-}
-function terrainHeight(x, z) {
-  // continents larges + collines + détail
-  const n = smoothNoise(x / 90, z / 90) * 0.55
-          + smoothNoise(x / 28, z / 28) * 0.28
-          + smoothNoise(x / 10, z / 10) * 0.12
-          + smoothNoise(x / 4, z / 4) * 0.05;
-  return Math.floor(2 + n * 30);
-}
-const isTreeAt = (x, z) =>
-  hash(x * 7 + 1, z * 13 + 5) < 0.012 && terrainHeight(x, z) > SEA + 1;
-
-// ---------- Données du monde : chunks générés à la demande ----------
-const chunkData = new Map();   // "cx,cz" -> Uint8Array
-const cellIndex = (lx, y, lz) => (y * CHUNK + lz) * CHUNK + lx;
-
-function generateChunkData(cx, cz) {
-  const data = new Uint8Array(CHUNK * CHUNK * HEIGHT);
-  const x0 = cx * CHUNK, z0 = cz * CHUNK;
-  for (let lx = 0; lx < CHUNK; lx++) {
-    for (let lz = 0; lz < CHUNK; lz++) {
-      const h = terrainHeight(x0 + lx, z0 + lz);
-      const beach = h <= SEA + 1;
-      for (let y = 0; y <= Math.min(h, HEIGHT - 1); y++) {
-        let id;
-        if (y === h) id = beach ? 4 : 1;
-        else if (y >= h - 3) id = beach ? 4 : 2;
-        else id = 3;
-        data[cellIndex(lx, y, lz)] = id;
-      }
-      for (let y = h + 1; y <= SEA; y++) data[cellIndex(lx, y, lz)] = WATER;
-    }
-  }
-  // Arbres : on balaie aussi une marge autour du chunk pour que les
-  // feuillages qui débordent d'un chunk voisin soient bien présents
-  for (let tx = x0 - 3; tx < x0 + CHUNK + 3; tx++) {
-    for (let tz = z0 - 3; tz < z0 + CHUNK + 3; tz++) {
-      if (!isTreeAt(tx, tz)) continue;
-      const h = terrainHeight(tx, tz);
-      const trunk = 4 + Math.floor(hash(tx, tz) * 2);
-      const put = (wx, wy, wz, id, keepExisting) => {
-        const lx = wx - x0, lz = wz - z0;
-        if (lx < 0 || lx >= CHUNK || lz < 0 || lz >= CHUNK || wy < 0 || wy >= HEIGHT) return;
-        const i = cellIndex(lx, wy, lz);
-        if (keepExisting && data[i] !== 0) return;
-        data[i] = id;
+    // ---------- Atlas de textures généré en pixel-art ----------
+    const TILE_PX = 16, N_TILES = 9;
+    const atlasCanvas = document.createElement('canvas');
+    atlasCanvas.width = TILE_PX * N_TILES;
+    atlasCanvas.height = TILE_PX;
+    {
+      const ctx = atlasCanvas.getContext('2d');
+      let s = 1234;
+      const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+      const drawTile = (i, base, speckles, amount = 40) => {
+        ctx.fillStyle = base;
+        ctx.fillRect(i * TILE_PX, 0, TILE_PX, TILE_PX);
+        for (let n = 0; n < amount; n++) {
+          ctx.fillStyle = speckles[Math.floor(rnd() * speckles.length)];
+          ctx.fillRect(i * TILE_PX + Math.floor(rnd() * TILE_PX), Math.floor(rnd() * TILE_PX), 1, 1);
+        }
       };
-      for (let y = 1; y <= trunk; y++) put(tx, h + y, tz, 5, false);
-      for (let dx = -2; dx <= 2; dx++)
-        for (let dz = -2; dz <= 2; dz++)
-          for (let dy = trunk - 1; dy <= trunk + 2; dy++) {
-            const r = Math.abs(dx) + Math.abs(dz) + Math.max(0, dy - trunk);
-            if (r > 3 || (dx === 0 && dz === 0 && dy <= trunk)) continue;
-            put(tx + dx, h + dy, tz + dz, 6, true);
-          }
+      drawTile(TILES.grassTop, '#5da130', ['#4c8a26', '#6fb53c', '#559a2b']);
+      drawTile(TILES.dirt, '#79553a', ['#6a4a32', '#8a6244', '#5e4128']);
+      drawTile(TILES.grassSide, '#79553a', ['#6a4a32', '#8a6244', '#5e4128']);
+      ctx.fillStyle = '#5da130';
+      ctx.fillRect(TILES.grassSide * TILE_PX, 0, TILE_PX, 4);
+      for (let n = 0; n < 10; n++) {
+        ctx.fillRect(TILES.grassSide * TILE_PX + Math.floor(rnd() * TILE_PX), 4, 1, 1 + Math.floor(rnd() * 2));
+      }
+      drawTile(TILES.stone, '#8a8a8a', ['#7b7b7b', '#999999', '#6f6f6f']);
+      drawTile(TILES.sand, '#dcd29b', ['#cfc48d', '#e8dfae', '#c6bb82']);
+      drawTile(TILES.logSide, '#6b4f2e', ['#5a4126', '#7d5d38', '#4e3820'], 60);
+      drawTile(TILES.logTop, '#a3814f', ['#8f7043', '#6b4f2e']);
+      ctx.strokeStyle = '#6b4f2e';
+      ctx.strokeRect(TILES.logTop * TILE_PX + 3.5, 3.5, 9, 9);
+      drawTile(TILES.leaves, '#3e7a1f', ['#336618', '#4c9328', '#2c5a13'], 70);
+      drawTile(TILES.planks, '#b08d55', ['#a07d47', '#c09d63'], 30);
+      ctx.fillStyle = '#8a6a3c';
+      for (const y of [3, 7, 11]) ctx.fillRect(TILES.planks * TILE_PX, y, TILE_PX, 1);
     }
-  }
-  return data;
-}
+    const atlasTexture = new THREE.CanvasTexture(atlasCanvas);
+    atlasTexture.magFilter = THREE.NearestFilter;
+    atlasTexture.minFilter = THREE.NearestFilter;
+    atlasTexture.generateMipmaps = false;
+    atlasTexture.colorSpace = THREE.SRGBColorSpace;
 
-function getChunkData(cx, cz) {
-  const id = cx + ',' + cz;
-  let data = chunkData.get(id);
-  if (!data) {
-    data = generateChunkData(cx, cz);
-    chunkData.set(id, data);
-  }
-  return data;
-}
+    // ---------- Bruit seedé ----------
+    function hash(x, z) {
+      let h = (x | 0) * 374761393 + (z | 0) * 668265263 + SEED * 2246822519;
+      h = (h ^ (h >>> 13)) * 1274126177;
+      return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
+    }
+    function smoothNoise(x, z) {
+      const xi = Math.floor(x), zi = Math.floor(z);
+      const xf = x - xi, zf = z - zi;
+      const u = xf * xf * (3 - 2 * xf), v = zf * zf * (3 - 2 * zf);
+      const a = hash(xi, zi), b = hash(xi + 1, zi), c = hash(xi, zi + 1), d = hash(xi + 1, zi + 1);
+      return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+    }
+    function terrainHeight(x, z) {
+      // continents larges + collines + détail
+      const n = smoothNoise(x / 90, z / 90) * 0.55
+        + smoothNoise(x / 28, z / 28) * 0.28
+        + smoothNoise(x / 10, z / 10) * 0.12
+        + smoothNoise(x / 4, z / 4) * 0.05;
+      return Math.floor(2 + n * 30);
+    }
+    const isTreeAt = (x, z) =>
+      hash(x * 7 + 1, z * 13 + 5) < 0.012 && terrainHeight(x, z) > SEA + 1;
 
-function getBlock(x, y, z) {
-  if (y < 0 || y >= HEIGHT) return 0;
-  const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK);
-  return getChunkData(cx, cz)[cellIndex(x - cx * CHUNK, y, z - cz * CHUNK)];
-}
-function setBlock(x, y, z, id) {
-  if (y < 0 || y >= HEIGHT) return;
-  const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK);
-  getChunkData(cx, cz)[cellIndex(x - cx * CHUNK, y, z - cz * CHUNK)] = id;
-}
+    // ---------- Données du monde : chunks générés à la demande ----------
+    const chunkData = new Map();   // "cx,cz" -> Uint8Array
+    const cellIndex = (lx, y, lz) => (y * CHUNK + lz) * CHUNK + lx;
 
-// ---------- Scène ----------
-const SKY = 0x87ceeb;
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(SKY);
-scene.fog = new THREE.Fog(SKY, RENDER_DIST * CHUNK * 0.55, RENDER_DIST * CHUNK * 0.95);
+    function generateChunkData(cx, cz) {
+      const data = new Uint8Array(CHUNK * CHUNK * HEIGHT);
+      const x0 = cx * CHUNK, z0 = cz * CHUNK;
+      for (let lx = 0; lx < CHUNK; lx++) {
+        for (let lz = 0; lz < CHUNK; lz++) {
+          const h = terrainHeight(x0 + lx, z0 + lz);
+          const beach = h <= SEA + 1;
+          for (let y = 0; y <= Math.min(h, HEIGHT - 1); y++) {
+            let id;
+            if (y === h) id = beach ? 4 : 1;
+            else if (y >= h - 3) id = beach ? 4 : 2;
+            else id = 3;
+            data[cellIndex(lx, y, lz)] = id;
+          }
+          for (let y = h + 1; y <= SEA; y++) data[cellIndex(lx, y, lz)] = WATER;
+        }
+      }
+      // Arbres : on balaie aussi une marge autour du chunk pour que les
+      // feuillages qui débordent d'un chunk voisin soient bien présents
+      for (let tx = x0 - 3; tx < x0 + CHUNK + 3; tx++) {
+        for (let tz = z0 - 3; tz < z0 + CHUNK + 3; tz++) {
+          if (!isTreeAt(tx, tz)) continue;
+          const h = terrainHeight(tx, tz);
+          const trunk = 4 + Math.floor(hash(tx, tz) * 2);
+          const put = (wx, wy, wz, id, keepExisting) => {
+            const lx = wx - x0, lz = wz - z0;
+            if (lx < 0 || lx >= CHUNK || lz < 0 || lz >= CHUNK || wy < 0 || wy >= HEIGHT) return;
+            const i = cellIndex(lx, wy, lz);
+            if (keepExisting && data[i] !== 0) return;
+            data[i] = id;
+          };
+          for (let y = 1; y <= trunk; y++) put(tx, h + y, tz, 5, false);
+          for (let dx = -2; dx <= 2; dx++)
+            for (let dz = -2; dz <= 2; dz++)
+              for (let dy = trunk - 1; dy <= trunk + 2; dy++) {
+                const r = Math.abs(dx) + Math.abs(dz) + Math.max(0, dy - trunk);
+                if (r > 3 || (dx === 0 && dz === 0 && dy <= trunk)) continue;
+                put(tx + dx, h + dy, tz + dz, 6, true);
+              }
+        }
+      }
+      return data;
+    }
 
-const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 400);
-const renderer = new THREE.WebGLRenderer({ antialias: false });
-renderer.setSize(innerWidth, innerHeight);
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-document.body.appendChild(renderer.domElement);
+    function getChunkData(cx, cz) {
+      const id = cx + ',' + cz;
+      let data = chunkData.get(id);
+      if (!data) {
+        data = generateChunkData(cx, cz);
+        chunkData.set(id, data);
+      }
+      return data;
+    }
 
-scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-const sun = new THREE.DirectionalLight(0xffffff, 0.9);
-sun.position.set(0.6, 1, 0.4);
-scene.add(sun);
+    function getBlock(x, y, z) {
+      if (y < 0 || y >= HEIGHT) return 0;
+      const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK);
+      return getChunkData(cx, cz)[cellIndex(x - cx * CHUNK, y, z - cz * CHUNK)];
+    }
+    function setBlock(x, y, z, id) {
+      if (y < 0 || y >= HEIGHT) return;
+      const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK);
+      getChunkData(cx, cz)[cellIndex(x - cx * CHUNK, y, z - cz * CHUNK)] = id;
+    }
 
-const blockMaterial = new THREE.MeshLambertMaterial({ map: atlasTexture, vertexColors: true });
-const waterMaterial = new THREE.MeshLambertMaterial({
-  color: 0x3f76e4, transparent: true, opacity: 0.65, depthWrite: false,
-  side: THREE.DoubleSide,
-});
+    // ---------- Scène ----------
+    const SKY = 0x87ceeb;
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(SKY);
+    scene.fog = new THREE.Fog(SKY, RENDER_DIST * CHUNK * 0.55, RENDER_DIST * CHUNK * 0.95);
 
-// ---------- Maillage par chunk ----------
-// Ombrage directionnel façon Minecraft : dessus clair, dessous sombre
-const FACES = [
-  { dir: [ 1, 0, 0], corners: [[1,1,1],[1,0,1],[1,1,0],[1,0,0]], uv: 'side',   shade: 0.75 },
-  { dir: [-1, 0, 0], corners: [[0,1,0],[0,0,0],[0,1,1],[0,0,1]], uv: 'side',   shade: 0.75 },
-  { dir: [ 0, 1, 0], corners: [[0,1,1],[1,1,1],[0,1,0],[1,1,0]], uv: 'top',    shade: 1.0  },
-  { dir: [ 0,-1, 0], corners: [[0,0,0],[1,0,0],[0,0,1],[1,0,1]], uv: 'bottom', shade: 0.55 },
-  { dir: [ 0, 0, 1], corners: [[0,1,1],[0,0,1],[1,1,1],[1,0,1]], uv: 'side',   shade: 0.86 },
-  { dir: [ 0, 0,-1], corners: [[1,1,0],[1,0,0],[0,1,0],[0,0,0]], uv: 'side',   shade: 0.86 },
-];
-const chunkMeshes = new Map(); // "cx,cz" -> { solid, water }
+    const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 400);
+    const renderer = new THREE.WebGLRenderer({ antialias: false });
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    document.body.appendChild(renderer.domElement);
 
-function buildChunk(cx, cz) {
-  const pos = [], nor = [], uv = [], col = [], idx = [];
-  const wpos = [], wnor = [], widx = [];
-  const x0 = cx * CHUNK, z0 = cz * CHUNK;
+    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+    const sun = new THREE.DirectionalLight(0xffffff, 0.9);
+    sun.position.set(0.6, 1, 0.4);
+    scene.add(sun);
 
-  for (let lx = 0; lx < CHUNK; lx++) {
-    for (let lz = 0; lz < CHUNK; lz++) {
-      for (let y = 0; y < HEIGHT; y++) {
-        const x = x0 + lx, z = z0 + lz;
-        const id = getBlock(x, y, z);
-        if (!id) continue;
+    const blockMaterial = new THREE.MeshLambertMaterial({ map: atlasTexture, vertexColors: true });
+    const waterMaterial = new THREE.MeshLambertMaterial({
+      color: 0x3f76e4, transparent: true, opacity: 0.65, depthWrite: false,
+      side: THREE.DoubleSide,
+    });
 
-        if (id === WATER) {
-          // face d'eau visible uniquement contre de l'air
-          const surface = getBlock(x, y + 1, z) !== WATER;
-          for (const { dir, corners } of FACES) {
-            if (getBlock(x + dir[0], y + dir[1], z + dir[2]) !== 0) continue;
-            const start = wpos.length / 3;
-            for (const [px, py, pz] of corners) {
-              const top = py === 1 && surface ? 0.88 : py; // léger creux en surface
-              wpos.push(x + px, y + top, z + pz);
-              wnor.push(...dir);
+    // ---------- Maillage par chunk ----------
+    // Ombrage directionnel façon Minecraft : dessus clair, dessous sombre
+    const FACES = [
+      { dir: [1, 0, 0], corners: [[1, 1, 1], [1, 0, 1], [1, 1, 0], [1, 0, 0]], uv: 'side', shade: 0.75 },
+      { dir: [-1, 0, 0], corners: [[0, 1, 0], [0, 0, 0], [0, 1, 1], [0, 0, 1]], uv: 'side', shade: 0.75 },
+      { dir: [0, 1, 0], corners: [[0, 1, 1], [1, 1, 1], [0, 1, 0], [1, 1, 0]], uv: 'top', shade: 1.0 },
+      { dir: [0, -1, 0], corners: [[0, 0, 0], [1, 0, 0], [0, 0, 1], [1, 0, 1]], uv: 'bottom', shade: 0.55 },
+      { dir: [0, 0, 1], corners: [[0, 1, 1], [0, 0, 1], [1, 1, 1], [1, 0, 1]], uv: 'side', shade: 0.86 },
+      { dir: [0, 0, -1], corners: [[1, 1, 0], [1, 0, 0], [0, 1, 0], [0, 0, 0]], uv: 'side', shade: 0.86 },
+    ];
+    const chunkMeshes = new Map(); // "cx,cz" -> { solid, water }
+
+    function buildChunk(cx, cz) {
+      const pos = [], nor = [], uv = [], col = [], idx = [];
+      const wpos = [], wnor = [], widx = [];
+      const x0 = cx * CHUNK, z0 = cz * CHUNK;
+
+      for (let lx = 0; lx < CHUNK; lx++) {
+        for (let lz = 0; lz < CHUNK; lz++) {
+          for (let y = 0; y < HEIGHT; y++) {
+            const x = x0 + lx, z = z0 + lz;
+            const id = getBlock(x, y, z);
+            if (!id) continue;
+
+            if (id === WATER) {
+              // face d'eau visible uniquement contre de l'air
+              const surface = getBlock(x, y + 1, z) !== WATER;
+              for (const { dir, corners } of FACES) {
+                if (getBlock(x + dir[0], y + dir[1], z + dir[2]) !== 0) continue;
+                const start = wpos.length / 3;
+                for (const [px, py, pz] of corners) {
+                  const top = py === 1 && surface ? 0.88 : py; // léger creux en surface
+                  wpos.push(x + px, y + top, z + pz);
+                  wnor.push(...dir);
+                }
+                widx.push(start, start + 1, start + 2, start + 2, start + 1, start + 3);
+              }
+              continue;
             }
-            widx.push(start, start + 1, start + 2, start + 2, start + 1, start + 3);
-          }
-          continue;
-        }
 
-        const block = BLOCKS[id];
-        for (const { dir, corners, uv: side, shade } of FACES) {
-          if (isSolid(getBlock(x + dir[0], y + dir[1], z + dir[2]))) continue;
-          const tile = block[side];
-          const u0 = (tile + 0.02) / N_TILES, u1 = (tile + 0.98) / N_TILES;
-          const start = pos.length / 3;
-          for (const [px, py, pz] of corners) {
-            pos.push(x + px, y + py, z + pz);
-            nor.push(...dir);
-            col.push(shade, shade, shade);
+            const block = BLOCKS[id];
+            for (const { dir, corners, uv: side, shade } of FACES) {
+              if (isSolid(getBlock(x + dir[0], y + dir[1], z + dir[2]))) continue;
+              const tile = block[side];
+              const u0 = (tile + 0.02) / N_TILES, u1 = (tile + 0.98) / N_TILES;
+              const start = pos.length / 3;
+              for (const [px, py, pz] of corners) {
+                pos.push(x + px, y + py, z + pz);
+                nor.push(...dir);
+                col.push(shade, shade, shade);
+              }
+              uv.push(u0, 0.98, u0, 0.02, u1, 0.98, u1, 0.02);
+              idx.push(start, start + 1, start + 2, start + 2, start + 1, start + 3);
+            }
           }
-          uv.push(u0, 0.98, u0, 0.02, u1, 0.98, u1, 0.02);
-          idx.push(start, start + 1, start + 2, start + 2, start + 1, start + 3);
         }
       }
-    }
-  }
 
-  const id = cx + ',' + cz;
-  removeChunkMesh(id);
-  const entry = { solid: null, water: null };
+      const id = cx + ',' + cz;
+      removeChunkMesh(id);
+      const entry = { solid: null, water: null };
 
-  const solidGeo = new THREE.BufferGeometry();
-  solidGeo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  solidGeo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
-  solidGeo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-  solidGeo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-  solidGeo.setIndex(idx);
-  entry.solid = new THREE.Mesh(solidGeo, blockMaterial);
-  scene.add(entry.solid);
+      const solidGeo = new THREE.BufferGeometry();
+      solidGeo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      solidGeo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+      solidGeo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+      solidGeo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+      solidGeo.setIndex(idx);
+      entry.solid = new THREE.Mesh(solidGeo, blockMaterial);
+      scene.add(entry.solid);
 
-  if (wpos.length) {
-    const waterGeo = new THREE.BufferGeometry();
-    waterGeo.setAttribute('position', new THREE.Float32BufferAttribute(wpos, 3));
-    waterGeo.setAttribute('normal', new THREE.Float32BufferAttribute(wnor, 3));
-    waterGeo.setIndex(widx);
-    entry.water = new THREE.Mesh(waterGeo, waterMaterial);
-    scene.add(entry.water);
-  }
-  chunkMeshes.set(id, entry);
-}
-
-function removeChunkMesh(id) {
-  const entry = chunkMeshes.get(id);
-  if (!entry) return;
-  for (const mesh of [entry.solid, entry.water]) {
-    if (mesh) { scene.remove(mesh); mesh.geometry.dispose(); }
-  }
-  chunkMeshes.delete(id);
-}
-
-function rebuildAround(x, z) {
-  const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK);
-  const lx = x - cx * CHUNK, lz = z - cz * CHUNK;
-  buildChunk(cx, cz);
-  if (lx === 0) buildChunk(cx - 1, cz);
-  if (lx === CHUNK - 1) buildChunk(cx + 1, cz);
-  if (lz === 0) buildChunk(cx, cz - 1);
-  if (lz === CHUNK - 1) buildChunk(cx, cz + 1);
-}
-
-// ---------- Streaming des chunks autour du joueur ----------
-let buildQueue = [];
-let lastPlayerChunk = null;
-
-function updateChunkStreaming() {
-  const pcx = Math.floor(player.pos.x / CHUNK), pcz = Math.floor(player.pos.z / CHUNK);
-  const current = pcx + ',' + pcz;
-  if (current !== lastPlayerChunk) {
-    lastPlayerChunk = current;
-    // liste des chunks voulus, triés du plus proche au plus lointain
-    buildQueue = [];
-    for (let dx = -RENDER_DIST; dx <= RENDER_DIST; dx++)
-      for (let dz = -RENDER_DIST; dz <= RENDER_DIST; dz++) {
-        const d = Math.hypot(dx, dz);
-        if (d > RENDER_DIST) continue;
-        const cid = (pcx + dx) + ',' + (pcz + dz);
-        if (!chunkMeshes.has(cid)) buildQueue.push({ cx: pcx + dx, cz: pcz + dz, d });
+      if (wpos.length) {
+        const waterGeo = new THREE.BufferGeometry();
+        waterGeo.setAttribute('position', new THREE.Float32BufferAttribute(wpos, 3));
+        waterGeo.setAttribute('normal', new THREE.Float32BufferAttribute(wnor, 3));
+        waterGeo.setIndex(widx);
+        entry.water = new THREE.Mesh(waterGeo, waterMaterial);
+        scene.add(entry.water);
       }
-    buildQueue.sort((a, b) => a.d - b.d);
-    // décharge les maillages trop lointains (les données restent en cache)
-    for (const cid of [...chunkMeshes.keys()]) {
-      const [cx, cz] = cid.split(',').map(Number);
-      if (Math.hypot(cx - pcx, cz - pcz) > UNLOAD_DIST) removeChunkMesh(cid);
+      chunkMeshes.set(id, entry);
     }
-  }
-  for (let i = 0; i < CHUNKS_PER_FRAME && buildQueue.length; i++) {
-    const { cx, cz } = buildQueue.shift();
-    buildChunk(cx, cz);
-  }
-}
 
-// ---------- Joueur ----------
-const player = {
-  pos: new THREE.Vector3(8.5, 0, 8.5),
-  vel: new THREE.Vector3(),
-  onGround: false, inWater: false,
-  yaw: 0, pitch: 0,
-  width: 0.6, height: 1.8, eye: 1.62,
-};
-player.pos.y = Math.max(terrainHeight(8, 8), SEA) + 3;
-
-function collides(pos) {
-  const half = player.width / 2;
-  const minX = Math.floor(pos.x - half), maxX = Math.floor(pos.x + half);
-  const minY = Math.floor(pos.y), maxY = Math.floor(pos.y + player.height);
-  const minZ = Math.floor(pos.z - half), maxZ = Math.floor(pos.z + half);
-  for (let x = minX; x <= maxX; x++)
-    for (let y = minY; y <= maxY; y++)
-      for (let z = minZ; z <= maxZ; z++)
-        if (isSolid(getBlock(x, y, z))) return true;
-  return false;
-}
-
-const keys = new Set();
-addEventListener('keydown', e => {
-  keys.add(e.code);
-  const n = parseInt(e.key);
-  if (n >= 1 && n <= HOTBAR.length) selectSlot(n - 1);
-});
-addEventListener('keyup', e => keys.delete(e.code));
-
-// ---------- Verrouillage du pointeur ----------
-const overlay = document.getElementById('overlay');
-// Cliquer n'importe où sur l'écran d'accueil (sauf le champ pseudo) lance/reprend le jeu.
-// startPlay est défini plus bas (section Multijoueur) mais disponible au moment du clic.
-overlay.addEventListener('click', e => {
-  if (e.target && e.target.id === 'pseudo') return; // laisser saisir le pseudo
-  startPlay();
-});
-document.addEventListener('pointerlockchange', () => {
-  overlay.style.display = document.pointerLockElement ? 'none' : 'flex';
-  keys.clear();
-});
-document.addEventListener('mousemove', e => {
-  if (!document.pointerLockElement) return;
-  player.yaw -= e.movementX * 0.0025;
-  player.pitch -= e.movementY * 0.0025;
-  player.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, player.pitch));
-});
-
-// ---------- Commandes tactiles (mobile / tablette) ----------
-// Sur un appareil tactile il n'y a ni clavier (ZQSD) ni verrouillage de pointeur :
-// on pilote avec un joystick virtuel + glisser pour regarder + boutons d'action.
-const IS_TOUCH = matchMedia('(pointer: coarse)').matches;
-const touchUI = document.getElementById('touch');
-let touchActive = false;          // vrai quand on joue sur tactile
-const moveInput = { x: 0, y: 0 }; // apport du joystick : x = latéral, y = avant
-let touchJump = false;
-// « en train de jouer » : soit pointeur verrouillé (bureau), soit session tactile
-const isPlaying = () => !!document.pointerLockElement || touchActive;
-
-// ---------- Visée et blocs ----------
-const raycaster = new THREE.Raycaster();
-raycaster.far = REACH;
-const highlight = new THREE.LineSegments(
-  new THREE.EdgesGeometry(new THREE.BoxGeometry(1.002, 1.002, 1.002)),
-  new THREE.LineBasicMaterial({ color: 0x000000 })
-);
-highlight.visible = false;
-scene.add(highlight);
-
-function pickBlock() {
-  raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-  const solids = [];
-  for (const { solid } of chunkMeshes.values()) if (solid) solids.push(solid);
-  const hits = raycaster.intersectObjects(solids);
-  if (!hits.length) return null;
-  const hit = hits[0];
-  const n = hit.face.normal;
-  const p = hit.point.clone().addScaledVector(n, -0.5);
-  const block = [Math.floor(p.x), Math.floor(p.y), Math.floor(p.z)];
-  const adjacent = [block[0] + n.x, block[1] + n.y, block[2] + n.z];
-  return { block, adjacent };
-}
-
-function breakBlock() {
-  const target = pickBlock();
-  if (!target) return;
-  const [x, y, z] = target.block;
-  // un bloc cassé sous le niveau de la mer se remplit d'eau si l'eau le touche
-  const nearWater = [[1,0,0],[-1,0,0],[0,1,0],[0,0,1],[0,0,-1]]
-    .some(([dx, dy, dz]) => getBlock(x + dx, y + dy, z + dz) === WATER);
-  const newId = y <= SEA && nearWater ? WATER : 0;
-  setBlock(x, y, z, newId);
-  rebuildAround(x, z);
-  sendBlock(x, y, z, newId);
-}
-function placeBlock() {
-  const target = pickBlock();
-  if (!target) return;
-  const [x, y, z] = target.adjacent;
-  if (y < 0 || y >= HEIGHT) return;
-  const previous = getBlock(x, y, z);
-  setBlock(x, y, z, HOTBAR[activeSlot]);
-  if (collides(player.pos)) { setBlock(x, y, z, previous); return; }
-  rebuildAround(x, z);
-  sendBlock(x, y, z, HOTBAR[activeSlot]);
-}
-
-addEventListener('mousedown', e => {
-  if (!document.pointerLockElement) return;
-  if (e.button === 0) breakBlock();
-  else if (e.button === 2) placeBlock();
-});
-addEventListener('contextmenu', e => e.preventDefault());
-addEventListener('wheel', e => {
-  if (!document.pointerLockElement) return;
-  selectSlot((activeSlot + (e.deltaY > 0 ? 1 : -1) + HOTBAR.length) % HOTBAR.length);
-});
-
-// ---------- Barre de blocs ----------
-let activeSlot = 0;
-const hotbarEl = document.getElementById('hotbar');
-const atlasURL = atlasCanvas.toDataURL();
-HOTBAR.forEach((id, i) => {
-  const slot = document.createElement('div');
-  slot.className = 'slot';
-  slot.title = BLOCKS[id].name;
-  slot.style.backgroundImage = `url(${atlasURL})`;
-  slot.style.backgroundSize = `${N_TILES * 100}% 100%`;
-  slot.style.backgroundPosition = `${(BLOCKS[id].side / (N_TILES - 1)) * 100}% 0`;
-  slot.innerHTML = `<span>${i + 1}</span>`;
-  slot.addEventListener('click', () => selectSlot(i));
-  hotbarEl.appendChild(slot);
-});
-function selectSlot(i) {
-  activeSlot = i;
-  [...hotbarEl.children].forEach((el, j) => el.classList.toggle('active', j === i));
-}
-selectSlot(0);
-
-// ---------- HUD de debug ----------
-const infoEl = document.getElementById('info');
-let fps = 0, fpsFrames = 0, fpsTime = 0;
-function updateInfo() {
-  infoEl.textContent =
-    `Seed : ${SEED}\n` +
-    `XYZ  : ${player.pos.x.toFixed(1)} / ${player.pos.y.toFixed(1)} / ${player.pos.z.toFixed(1)}\n` +
-    `Chunks : ${chunkMeshes.size} affichés, ${chunkData.size} générés\n` +
-    `Joueurs : ${net.connected ? others.size + 1 : 1}${net.connected ? '' : ' (solo)'}\n` +
-    `FPS  : ${fps}`;
-}
-
-// ---------- Multijoueur ----------
-// Le monde (terrain) est déjà identique pour une même seed. Le serveur ne
-// transporte que les positions des joueurs et les blocs modifiés (les « deltas »).
-const others = new Map(); // id -> { group, target:{x,y,z,yaw} }
-const net = { ws: null, id: null, connected: false, name: '' };
-
-const netStatusEl = document.getElementById('netstatus');
-const setNetStatus = t => { netStatusEl.textContent = t; };
-
-function wsURL() {
-  // En prod (HTTPS) nginx relaie /ws vers le serveur ; en local on vise le port 8080.
-  if (location.protocol === 'https:') return `wss://${location.host}/ws`;
-  return `ws://${location.hostname || 'localhost'}:8080`;
-}
-
-function playerColor(id) {
-  return new THREE.Color(`hsl(${(id * 47) % 360}, 65%, 55%)`);
-}
-
-function makeNameSprite(text) {
-  const c = document.createElement('canvas');
-  const ctx = c.getContext('2d');
-  ctx.font = 'bold 32px monospace';
-  const w = Math.ceil(ctx.measureText(text).width) + 20;
-  c.width = w; c.height = 44;
-  ctx.font = 'bold 32px monospace';
-  ctx.fillStyle = 'rgba(0,0,0,.5)';
-  ctx.fillRect(0, 0, w, 44);
-  ctx.fillStyle = '#fff';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(text, 10, 24);
-  const tex = new THREE.CanvasTexture(c);
-  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
-  spr.scale.set((w / 44) * 0.6, 0.6, 1);
-  spr.position.y = 2.25;
-  return spr;
-}
-
-function addOther(id, name, x, y, z, yaw) {
-  if (id === net.id || others.has(id)) return;
-  const group = new THREE.Group();
-  const color = playerColor(id);
-  const body = new THREE.Mesh(
-    new THREE.BoxGeometry(0.6, 1.2, 0.35),
-    new THREE.MeshLambertMaterial({ color })
-  );
-  body.position.y = 0.6;
-  const head = new THREE.Mesh(
-    new THREE.BoxGeometry(0.5, 0.5, 0.5),
-    new THREE.MeshLambertMaterial({ color: color.clone().multiplyScalar(0.8) })
-  );
-  head.position.y = 1.45;
-  group.add(body, head, makeNameSprite(name));
-  group.position.set(x, y, z);
-  group.rotation.y = yaw || 0;
-  scene.add(group);
-  others.set(id, { group, target: { x, y, z, yaw: yaw || 0 } });
-}
-
-function removeOther(id) {
-  const o = others.get(id);
-  if (!o) return;
-  o.group.traverse(obj => {
-    if (obj.geometry) obj.geometry.dispose();
-    if (obj.material) { if (obj.material.map) obj.material.map.dispose(); obj.material.dispose(); }
-  });
-  scene.remove(o.group);
-  others.delete(id);
-}
-
-function updateOthers(dt) {
-  const k = Math.min(1, dt * 12);
-  for (const o of others.values()) {
-    const g = o.group, t = o.target;
-    g.position.x += (t.x - g.position.x) * k;
-    g.position.y += (t.y - g.position.y) * k;
-    g.position.z += (t.z - g.position.z) * k;
-    let dyaw = t.yaw - g.rotation.y;
-    while (dyaw > Math.PI) dyaw -= Math.PI * 2;
-    while (dyaw < -Math.PI) dyaw += Math.PI * 2;
-    g.rotation.y += dyaw * k;
-  }
-}
-
-// Applique une modification de bloc reçue du serveur (ne reconstruit que si le chunk est affiché)
-function rebuildIfLoaded(cx, cz) {
-  if (chunkMeshes.has(cx + ',' + cz)) buildChunk(cx, cz);
-}
-function applyRemoteBlock(x, y, z, id) {
-  setBlock(x, y, z, id);
-  const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK);
-  const lx = x - cx * CHUNK, lz = z - cz * CHUNK;
-  rebuildIfLoaded(cx, cz);
-  if (lx === 0) rebuildIfLoaded(cx - 1, cz);
-  if (lx === CHUNK - 1) rebuildIfLoaded(cx + 1, cz);
-  if (lz === 0) rebuildIfLoaded(cx, cz - 1);
-  if (lz === CHUNK - 1) rebuildIfLoaded(cx, cz + 1);
-}
-function applyEdits(edits) {
-  const keys = Object.keys(edits);
-  if (!keys.length) return;
-  for (const k of keys) {
-    const [x, y, z] = k.split(',').map(Number);
-    setBlock(x, y, z, edits[k]);
-  }
-  // reconstruit les chunks déjà affichés ; les suivants se construiront déjà à jour
-  for (const cid of [...chunkMeshes.keys()]) {
-    const [cx, cz] = cid.split(',').map(Number);
-    buildChunk(cx, cz);
-  }
-}
-
-function sendBlock(x, y, z, id) {
-  if (net.connected && net.ws && net.ws.readyState === 1)
-    net.ws.send(JSON.stringify({ t: 'block', x, y, z, id }));
-}
-function sendMove() {
-  if (net.connected && net.ws && net.ws.readyState === 1)
-    net.ws.send(JSON.stringify({
-      t: 'move',
-      x: +player.pos.x.toFixed(2), y: +player.pos.y.toFixed(2), z: +player.pos.z.toFixed(2),
-      yaw: +player.yaw.toFixed(3), pitch: +player.pitch.toFixed(3),
-    }));
-}
-
-function connect() {
-  if (net.ws) return;
-  let ws;
-  try { ws = new WebSocket(wsURL()); }
-  catch { setNetStatus('Serveur injoignable (mode solo)'); return; }
-  net.ws = ws;
-  setNetStatus('Connexion…');
-  ws.onopen = () => {
-    net.connected = true;
-    ws.send(JSON.stringify({ t: 'join', seed: SEED, name: net.name }));
-  };
-  ws.onmessage = ev => {
-    let m; try { m = JSON.parse(ev.data); } catch { return; }
-    if (m.t === 'init') {
-      net.id = m.id;
-      for (const p of m.players) addOther(p.id, p.name, p.x, p.y, p.z, p.yaw);
-      applyEdits(m.edits);
-      setNetStatus(`En ligne — ${m.players.length + 1} joueur(s)`);
-    } else if (m.t === 'join') {
-      addOther(m.id, m.name, m.x, m.y, m.z, m.yaw);
-      setNetStatus(`En ligne — ${others.size + 1} joueur(s)`);
-    } else if (m.t === 'move') {
-      const o = others.get(m.id);
-      if (o) o.target = { x: m.x, y: m.y, z: m.z, yaw: m.yaw };
-      else addOther(m.id, 'Joueur', m.x, m.y, m.z, m.yaw);
-    } else if (m.t === 'leave') {
-      removeOther(m.id);
-      setNetStatus(`En ligne — ${others.size + 1} joueur(s)`);
-    } else if (m.t === 'block') {
-      applyRemoteBlock(m.x, m.y, m.z, m.id);
+    function removeChunkMesh(id) {
+      const entry = chunkMeshes.get(id);
+      if (!entry) return;
+      for (const mesh of [entry.solid, entry.water]) {
+        if (mesh) { scene.remove(mesh); mesh.geometry.dispose(); }
+      }
+      chunkMeshes.delete(id);
     }
-  };
-  ws.onclose = () => {
-    net.connected = false; net.ws = null; net.id = null;
-    for (const id of [...others.keys()]) removeOther(id);
-    setNetStatus('Hors ligne — reconnexion…');
-    if (net.name) setTimeout(() => { if (!net.ws) connect(); }, 3000);
-  };
-  ws.onerror = () => setNetStatus('Serveur injoignable (mode solo)');
-}
 
-// Bouton « Jouer » : mémorise le pseudo, se connecte, verrouille le pointeur
-const pseudoEl = document.getElementById('pseudo');
-const playBtn = document.getElementById('play');
-pseudoEl.value = localStorage.getItem('mawcraft.pseudo') || '';
-function startPlay() {
-  net.name = (pseudoEl.value.trim() || 'Joueur').slice(0, 16);
-  localStorage.setItem('mawcraft.pseudo', net.name);
-  if (!net.ws) connect();
-  // le champ pseudo / le bouton ne doivent plus capter le clavier une fois en jeu,
-  // sinon les touches de déplacement ne parviennent jamais au jeu
-  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-  if (IS_TOUCH) {
-    // pas de verrouillage de pointeur sur tactile : on affiche les commandes
-    touchActive = true;
-    overlay.style.display = 'none';
-    touchUI.style.display = 'block';
-  } else {
-    const req = renderer.domElement.requestPointerLock();
-    if (req && req.catch) req.catch(() => {}); // ignore un éventuel rejet du verrouillage
-  }
-}
-// Le clic sur le bouton « Jouer » remonte jusqu'à l'overlay, qui appelle startPlay().
-pseudoEl.addEventListener('keydown', e => {
-  if (e.key === 'Enter') { e.preventDefault(); startPlay(); }
-});
-
-// Câblage des commandes tactiles (uniquement si appareil tactile)
-if (IS_TOUCH) {
-  const joy = document.getElementById('joy');
-  const knob = document.getElementById('joyknob');
-  const look = document.getElementById('lookzone');
-  const R = 45; // rayon utile du joystick en px
-
-  let joyId = null;
-  joy.addEventListener('pointerdown', e => {
-    joyId = e.pointerId; joy.setPointerCapture(e.pointerId); e.preventDefault();
-  });
-  joy.addEventListener('pointermove', e => {
-    if (e.pointerId !== joyId) return;
-    const r = joy.getBoundingClientRect();
-    let dx = e.clientX - (r.left + r.width / 2);
-    let dy = e.clientY - (r.top + r.height / 2);
-    const len = Math.hypot(dx, dy) || 1;
-    if (len > R) { dx = dx / len * R; dy = dy / len * R; }
-    knob.style.transform = `translate(${dx}px, ${dy}px)`;
-    moveInput.x = dx / R;   // droite = +
-    moveInput.y = -dy / R;  // haut = avancer
-  });
-  const joyEnd = e => {
-    if (e.pointerId !== joyId) return;
-    joyId = null; moveInput.x = moveInput.y = 0; knob.style.transform = 'translate(0,0)';
-  };
-  joy.addEventListener('pointerup', joyEnd);
-  joy.addEventListener('pointercancel', joyEnd);
-
-  let lookId = null, lx = 0, ly = 0;
-  look.addEventListener('pointerdown', e => {
-    lookId = e.pointerId; lx = e.clientX; ly = e.clientY;
-    look.setPointerCapture(e.pointerId); e.preventDefault();
-  });
-  look.addEventListener('pointermove', e => {
-    if (e.pointerId !== lookId) return;
-    const dx = e.clientX - lx, dy = e.clientY - ly;
-    lx = e.clientX; ly = e.clientY;
-    player.yaw -= dx * 0.005;
-    player.pitch -= dy * 0.005;
-    player.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, player.pitch));
-  });
-  const lookEnd = e => { if (e.pointerId === lookId) lookId = null; };
-  look.addEventListener('pointerup', lookEnd);
-  look.addEventListener('pointercancel', lookEnd);
-
-  const bind = (id, onDown, onUp) => {
-    const el = document.getElementById(id);
-    el.addEventListener('pointerdown', e => { e.preventDefault(); onDown(); });
-    if (onUp) {
-      el.addEventListener('pointerup', onUp);
-      el.addEventListener('pointercancel', onUp);
+    function rebuildAround(x, z) {
+      const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK);
+      const lx = x - cx * CHUNK, lz = z - cz * CHUNK;
+      buildChunk(cx, cz);
+      if (lx === 0) buildChunk(cx - 1, cz);
+      if (lx === CHUNK - 1) buildChunk(cx + 1, cz);
+      if (lz === 0) buildChunk(cx, cz - 1);
+      if (lz === CHUNK - 1) buildChunk(cx, cz + 1);
     }
-  };
-  bind('btnJump', () => { touchJump = true; }, () => { touchJump = false; });
-  bind('btnBreak', () => breakBlock());
-  bind('btnPlace', () => placeBlock());
-  bind('btnPause', () => {
-    touchActive = false;
-    touchUI.style.display = 'none';
-    overlay.style.display = 'flex';
-  });
-}
 
-// ---------- Boucle de jeu ----------
-let lastMoveSent = 0;
-let lastTime = performance.now();
-function tick() {
-  requestAnimationFrame(tick);
-  const now = performance.now();
-  const dt = Math.min((now - lastTime) / 1000, 0.05);
-  lastTime = now;
+    // ---------- Streaming des chunks autour du joueur ----------
+    let buildQueue = [];
+    let lastPlayerChunk = null;
 
-  fpsFrames++;
-  if (now - fpsTime > 500) {
-    fps = Math.round(fpsFrames * 1000 / (now - fpsTime));
-    fpsFrames = 0; fpsTime = now;
-    updateInfo();
-  }
-
-  updateChunkStreaming();
-  updateOthers(dt);
-  if (now - lastMoveSent > 66) { lastMoveSent = now; sendMove(); }
-
-  player.inWater = getBlock(
-    Math.floor(player.pos.x), Math.floor(player.pos.y + 0.4), Math.floor(player.pos.z)
-  ) === WATER;
-
-  if (isPlaying()) {
-    let forward = (keys.has('KeyW') || keys.has('KeyZ') ? 1 : 0) - (keys.has('KeyS') ? 1 : 0) + moveInput.y;
-    let strafe  = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') || keys.has('KeyQ') ? 1 : 0) + moveInput.x;
-    forward = Math.max(-1, Math.min(1, forward));
-    strafe  = Math.max(-1, Math.min(1, strafe));
-    const sprint = keys.has('ShiftLeft') || keys.has('ShiftRight') ? SPRINT_MULT : 1;
-    const speed = SPEED * sprint * (player.inWater ? 0.6 : 1);
-    const sin = Math.sin(player.yaw), cos = Math.cos(player.yaw);
-    const dx = (-sin * forward + cos * strafe);
-    const dz = (-cos * forward - sin * strafe);
-    const moving = Math.abs(forward) > 0.05 || Math.abs(strafe) > 0.05;
-    const len = Math.hypot(dx, dz) || 1;
-    player.vel.x = (dx / len) * speed * (moving ? 1 : 0);
-    player.vel.z = (dz / len) * speed * (moving ? 1 : 0);
-    if (keys.has('Space') || touchJump) {
-      if (player.inWater) player.vel.y = Math.min(player.vel.y + 30 * dt, 4);
-      else if (player.onGround) player.vel.y = JUMP_SPEED;
-    }
-  } else {
-    player.vel.x = player.vel.z = 0;
-  }
-
-  if (player.inWater) {
-    player.vel.y -= GRAVITY * 0.35 * dt;
-    player.vel.y = Math.max(player.vel.y, -3.5);
-  } else {
-    player.vel.y -= GRAVITY * dt;
-    player.vel.y = Math.max(player.vel.y, -50);
-  }
-
-  player.onGround = false;
-  for (const [axis, v] of [['x', player.vel.x], ['y', player.vel.y], ['z', player.vel.z]]) {
-    if (!v) continue;
-    player.pos[axis] += v * dt;
-    if (collides(player.pos)) {
-      player.pos[axis] -= v * dt;
-      if (axis === 'y') {
-        if (v < 0) player.onGround = true;
-        player.vel.y = 0;
+    function updateChunkStreaming() {
+      const pcx = Math.floor(player.pos.x / CHUNK), pcz = Math.floor(player.pos.z / CHUNK);
+      const current = pcx + ',' + pcz;
+      if (current !== lastPlayerChunk) {
+        lastPlayerChunk = current;
+        // liste des chunks voulus, triés du plus proche au plus lointain
+        buildQueue = [];
+        for (let dx = -RENDER_DIST; dx <= RENDER_DIST; dx++)
+          for (let dz = -RENDER_DIST; dz <= RENDER_DIST; dz++) {
+            const d = Math.hypot(dx, dz);
+            if (d > RENDER_DIST) continue;
+            const cid = (pcx + dx) + ',' + (pcz + dz);
+            if (!chunkMeshes.has(cid)) buildQueue.push({ cx: pcx + dx, cz: pcz + dz, d });
+          }
+        buildQueue.sort((a, b) => a.d - b.d);
+        // décharge les maillages trop lointains (les données restent en cache)
+        for (const cid of [...chunkMeshes.keys()]) {
+          const [cx, cz] = cid.split(',').map(Number);
+          if (Math.hypot(cx - pcx, cz - pcz) > UNLOAD_DIST) removeChunkMesh(cid);
+        }
+      }
+      for (let i = 0; i < CHUNKS_PER_FRAME && buildQueue.length; i++) {
+        const { cx, cz } = buildQueue.shift();
+        buildChunk(cx, cz);
       }
     }
-  }
-  if (player.pos.y < -20) {
-    player.pos.y = HEIGHT;
-    player.vel.set(0, 0, 0);
-  }
 
-  camera.position.set(player.pos.x, player.pos.y + player.eye, player.pos.z);
-  camera.rotation.set(0, 0, 0);
-  camera.rotateY(player.yaw);
-  camera.rotateX(player.pitch);
+    // ---------- Joueur ----------
+    const player = {
+      pos: new THREE.Vector3(8.5, 0, 8.5),
+      vel: new THREE.Vector3(),
+      onGround: false, inWater: false,
+      yaw: 0, pitch: 0,
+      width: 0.6, height: 1.8, eye: 1.62,
+    };
+    player.pos.y = Math.max(terrainHeight(8, 8), SEA) + 3;
 
-  // teinte bleutée quand la tête est sous l'eau
-  const headInWater = getBlock(
-    Math.floor(camera.position.x), Math.floor(camera.position.y), Math.floor(camera.position.z)
-  ) === WATER;
-  scene.background.set(headInWater ? 0x2a5ecf : SKY);
-  scene.fog.color.set(headInWater ? 0x2a5ecf : SKY);
-  scene.fog.near = headInWater ? 1 : RENDER_DIST * CHUNK * 0.55;
-  scene.fog.far = headInWater ? 18 : RENDER_DIST * CHUNK * 0.95;
+    function collides(pos) {
+      const half = player.width / 2;
+      const minX = Math.floor(pos.x - half), maxX = Math.floor(pos.x + half);
+      const minY = Math.floor(pos.y), maxY = Math.floor(pos.y + player.height);
+      const minZ = Math.floor(pos.z - half), maxZ = Math.floor(pos.z + half);
+      for (let x = minX; x <= maxX; x++)
+        for (let y = minY; y <= maxY; y++)
+          for (let z = minZ; z <= maxZ; z++)
+            if (isSolid(getBlock(x, y, z))) return true;
+      return false;
+    }
 
-  const target = isPlaying() ? pickBlock() : null;
-  highlight.visible = !!target;
-  if (target) highlight.position.set(target.block[0] + 0.5, target.block[1] + 0.5, target.block[2] + 0.5);
+    const keys = new Set();
+    addEventListener('keydown', e => {
+      keys.add(e.code);
+      const n = parseInt(e.key);
+      if (n >= 1 && n <= HOTBAR.length) selectSlot(n - 1);
+    });
+    addEventListener('keyup', e => keys.delete(e.code));
 
-  renderer.render(scene, camera);
-}
-tick();
+    // ---------- Verrouillage du pointeur ----------
+    const overlay = document.getElementById('overlay');
+    // Cliquer n'importe où sur l'écran d'accueil (sauf le champ pseudo) lance/reprend le jeu.
+    // startPlay est défini plus bas (section Multijoueur) mais disponible au moment du clic.
+    overlay.addEventListener('click', e => {
+      if (e.target && e.target.id === 'pseudo') return; // laisser saisir le pseudo
+      startPlay();
+    });
+    document.addEventListener('pointerlockchange', () => {
+      overlay.style.display = document.pointerLockElement ? 'none' : 'flex';
+      keys.clear();
+    });
+    document.addEventListener('mousemove', e => {
+      if (!document.pointerLockElement) return;
+      player.yaw -= e.movementX * 0.0025;
+      player.pitch -= e.movementY * 0.0025;
+      player.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, player.pitch));
+    });
 
-addEventListener('resize', () => {
-  camera.aspect = innerWidth / innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
-});
-</script>
+    // ---------- Commandes tactiles (mobile / tablette) ----------
+    // Sur un appareil tactile il n'y a ni clavier (ZQSD) ni verrouillage de pointeur :
+    // on pilote avec un joystick virtuel + glisser pour regarder + boutons d'action.
+    const IS_TOUCH = matchMedia('(pointer: coarse)').matches;
+    const touchUI = document.getElementById('touch');
+    let touchActive = false;          // vrai quand on joue sur tactile
+    const moveInput = { x: 0, y: 0 }; // apport du joystick : x = latéral, y = avant
+    let touchJump = false;
+    // « en train de jouer » : soit pointeur verrouillé (bureau), soit session tactile
+    const isPlaying = () => !!document.pointerLockElement || touchActive;
+
+    // ---------- Visée et blocs ----------
+    const raycaster = new THREE.Raycaster();
+    raycaster.far = REACH;
+    const highlight = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(1.002, 1.002, 1.002)),
+      new THREE.LineBasicMaterial({ color: 0x000000 })
+    );
+    highlight.visible = false;
+    scene.add(highlight);
+
+    function pickBlock() {
+      raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+      const solids = [];
+      for (const { solid } of chunkMeshes.values()) if (solid) solids.push(solid);
+      const hits = raycaster.intersectObjects(solids);
+      if (!hits.length) return null;
+      const hit = hits[0];
+      const n = hit.face.normal;
+      const p = hit.point.clone().addScaledVector(n, -0.5);
+      const block = [Math.floor(p.x), Math.floor(p.y), Math.floor(p.z)];
+      const adjacent = [block[0] + n.x, block[1] + n.y, block[2] + n.z];
+      return { block, adjacent };
+    }
+
+    function breakBlock() {
+      const target = pickBlock();
+      if (!target) return;
+      const [x, y, z] = target.block;
+      // un bloc cassé sous le niveau de la mer se remplit d'eau si l'eau le touche
+      const nearWater = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, 0, 1], [0, 0, -1]]
+        .some(([dx, dy, dz]) => getBlock(x + dx, y + dy, z + dz) === WATER);
+      const newId = y <= SEA && nearWater ? WATER : 0;
+      setBlock(x, y, z, newId);
+      rebuildAround(x, z);
+      sendBlock(x, y, z, newId);
+    }
+    function placeBlock() {
+      const target = pickBlock();
+      if (!target) return;
+      const [x, y, z] = target.adjacent;
+      if (y < 0 || y >= HEIGHT) return;
+      const previous = getBlock(x, y, z);
+      setBlock(x, y, z, HOTBAR[activeSlot]);
+      if (collides(player.pos)) { setBlock(x, y, z, previous); return; }
+      rebuildAround(x, z);
+      sendBlock(x, y, z, HOTBAR[activeSlot]);
+    }
+
+    addEventListener('mousedown', e => {
+      if (!document.pointerLockElement) return;
+      if (e.button === 0) breakBlock();
+      else if (e.button === 2) placeBlock();
+    });
+    addEventListener('contextmenu', e => e.preventDefault());
+    addEventListener('wheel', e => {
+      if (!document.pointerLockElement) return;
+      selectSlot((activeSlot + (e.deltaY > 0 ? 1 : -1) + HOTBAR.length) % HOTBAR.length);
+    });
+
+    // ---------- Barre de blocs ----------
+    let activeSlot = 0;
+    const hotbarEl = document.getElementById('hotbar');
+    const atlasURL = atlasCanvas.toDataURL();
+    HOTBAR.forEach((id, i) => {
+      const slot = document.createElement('div');
+      slot.className = 'slot';
+      slot.title = BLOCKS[id].name;
+      slot.style.backgroundImage = `url(${atlasURL})`;
+      slot.style.backgroundSize = `${N_TILES * 100}% 100%`;
+      slot.style.backgroundPosition = `${(BLOCKS[id].side / (N_TILES - 1)) * 100}% 0`;
+      slot.innerHTML = `<span>${i + 1}</span>`;
+      slot.addEventListener('click', () => selectSlot(i));
+      hotbarEl.appendChild(slot);
+    });
+    function selectSlot(i) {
+      activeSlot = i;
+      [...hotbarEl.children].forEach((el, j) => el.classList.toggle('active', j === i));
+    }
+    selectSlot(0);
+
+    // ---------- HUD de debug ----------
+    const infoEl = document.getElementById('info');
+    let fps = 0, fpsFrames = 0, fpsTime = 0;
+    function updateInfo() {
+      infoEl.textContent =
+        `Seed : ${SEED}\n` +
+        `XYZ  : ${player.pos.x.toFixed(1)} / ${player.pos.y.toFixed(1)} / ${player.pos.z.toFixed(1)}\n` +
+        `Chunks : ${chunkMeshes.size} affichés, ${chunkData.size} générés\n` +
+        `Joueurs : ${net.connected ? others.size + 1 : 1}${net.connected ? '' : ' (solo)'}\n` +
+        `FPS  : ${fps}`;
+    }
+
+    // ---------- Multijoueur ----------
+    // Le monde (terrain) est déjà identique pour une même seed. Le serveur ne
+    // transporte que les positions des joueurs et les blocs modifiés (les « deltas »).
+    const others = new Map(); // id -> { group, target:{x,y,z,yaw} }
+    const net = { ws: null, id: null, connected: false, name: '' };
+
+    const netStatusEl = document.getElementById('netstatus');
+    const setNetStatus = t => { netStatusEl.textContent = t; };
+
+    function wsURL() {
+      // En prod (HTTPS) nginx relaie /ws vers le serveur ; en local on vise le port 8080.
+      if (location.protocol === 'https:') return `wss://${location.host}/ws`;
+      return `ws://${location.hostname || 'mawena.cloud'}:8080`;
+    }
+
+    function playerColor(id) {
+      return new THREE.Color(`hsl(${(id * 47) % 360}, 65%, 55%)`);
+    }
+
+    function makeNameSprite(text) {
+      const c = document.createElement('canvas');
+      const ctx = c.getContext('2d');
+      ctx.font = 'bold 32px monospace';
+      const w = Math.ceil(ctx.measureText(text).width) + 20;
+      c.width = w; c.height = 44;
+      ctx.font = 'bold 32px monospace';
+      ctx.fillStyle = 'rgba(0,0,0,.5)';
+      ctx.fillRect(0, 0, w, 44);
+      ctx.fillStyle = '#fff';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, 10, 24);
+      const tex = new THREE.CanvasTexture(c);
+      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
+      spr.scale.set((w / 44) * 0.6, 0.6, 1);
+      spr.position.y = 2.25;
+      return spr;
+    }
+
+    function addOther(id, name, x, y, z, yaw) {
+      if (id === net.id || others.has(id)) return;
+      const group = new THREE.Group();
+      const color = playerColor(id);
+      const body = new THREE.Mesh(
+        new THREE.BoxGeometry(0.6, 1.2, 0.35),
+        new THREE.MeshLambertMaterial({ color })
+      );
+      body.position.y = 0.6;
+      const head = new THREE.Mesh(
+        new THREE.BoxGeometry(0.5, 0.5, 0.5),
+        new THREE.MeshLambertMaterial({ color: color.clone().multiplyScalar(0.8) })
+      );
+      head.position.y = 1.45;
+      group.add(body, head, makeNameSprite(name));
+      group.position.set(x, y, z);
+      group.rotation.y = yaw || 0;
+      scene.add(group);
+      others.set(id, { group, target: { x, y, z, yaw: yaw || 0 } });
+    }
+
+    function removeOther(id) {
+      const o = others.get(id);
+      if (!o) return;
+      o.group.traverse(obj => {
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) { if (obj.material.map) obj.material.map.dispose(); obj.material.dispose(); }
+      });
+      scene.remove(o.group);
+      others.delete(id);
+    }
+
+    function updateOthers(dt) {
+      const k = Math.min(1, dt * 12);
+      for (const o of others.values()) {
+        const g = o.group, t = o.target;
+        g.position.x += (t.x - g.position.x) * k;
+        g.position.y += (t.y - g.position.y) * k;
+        g.position.z += (t.z - g.position.z) * k;
+        let dyaw = t.yaw - g.rotation.y;
+        while (dyaw > Math.PI) dyaw -= Math.PI * 2;
+        while (dyaw < -Math.PI) dyaw += Math.PI * 2;
+        g.rotation.y += dyaw * k;
+      }
+    }
+
+    // Applique une modification de bloc reçue du serveur (ne reconstruit que si le chunk est affiché)
+    function rebuildIfLoaded(cx, cz) {
+      if (chunkMeshes.has(cx + ',' + cz)) buildChunk(cx, cz);
+    }
+    function applyRemoteBlock(x, y, z, id) {
+      setBlock(x, y, z, id);
+      const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK);
+      const lx = x - cx * CHUNK, lz = z - cz * CHUNK;
+      rebuildIfLoaded(cx, cz);
+      if (lx === 0) rebuildIfLoaded(cx - 1, cz);
+      if (lx === CHUNK - 1) rebuildIfLoaded(cx + 1, cz);
+      if (lz === 0) rebuildIfLoaded(cx, cz - 1);
+      if (lz === CHUNK - 1) rebuildIfLoaded(cx, cz + 1);
+    }
+    function applyEdits(edits) {
+      const keys = Object.keys(edits);
+      if (!keys.length) return;
+      for (const k of keys) {
+        const [x, y, z] = k.split(',').map(Number);
+        setBlock(x, y, z, edits[k]);
+      }
+      // reconstruit les chunks déjà affichés ; les suivants se construiront déjà à jour
+      for (const cid of [...chunkMeshes.keys()]) {
+        const [cx, cz] = cid.split(',').map(Number);
+        buildChunk(cx, cz);
+      }
+    }
+
+    function sendBlock(x, y, z, id) {
+      if (net.connected && net.ws && net.ws.readyState === 1)
+        net.ws.send(JSON.stringify({ t: 'block', x, y, z, id }));
+    }
+    function sendMove() {
+      if (net.connected && net.ws && net.ws.readyState === 1)
+        net.ws.send(JSON.stringify({
+          t: 'move',
+          x: +player.pos.x.toFixed(2), y: +player.pos.y.toFixed(2), z: +player.pos.z.toFixed(2),
+          yaw: +player.yaw.toFixed(3), pitch: +player.pitch.toFixed(3),
+        }));
+    }
+
+    function connect() {
+      if (net.ws) return;
+      let ws;
+      try { ws = new WebSocket(wsURL()); }
+      catch { setNetStatus('Serveur injoignable (mode solo)'); return; }
+      net.ws = ws;
+      setNetStatus('Connexion…');
+      ws.onopen = () => {
+        net.connected = true;
+        ws.send(JSON.stringify({ t: 'join', seed: SEED, name: net.name }));
+      };
+      ws.onmessage = ev => {
+        let m; try { m = JSON.parse(ev.data); } catch { return; }
+        if (m.t === 'init') {
+          net.id = m.id;
+          for (const p of m.players) addOther(p.id, p.name, p.x, p.y, p.z, p.yaw);
+          applyEdits(m.edits);
+          setNetStatus(`En ligne — ${m.players.length + 1} joueur(s)`);
+        } else if (m.t === 'join') {
+          addOther(m.id, m.name, m.x, m.y, m.z, m.yaw);
+          setNetStatus(`En ligne — ${others.size + 1} joueur(s)`);
+        } else if (m.t === 'move') {
+          const o = others.get(m.id);
+          if (o) o.target = { x: m.x, y: m.y, z: m.z, yaw: m.yaw };
+          else addOther(m.id, 'Joueur', m.x, m.y, m.z, m.yaw);
+        } else if (m.t === 'leave') {
+          removeOther(m.id);
+          setNetStatus(`En ligne — ${others.size + 1} joueur(s)`);
+        } else if (m.t === 'block') {
+          applyRemoteBlock(m.x, m.y, m.z, m.id);
+        }
+      };
+      ws.onclose = () => {
+        net.connected = false; net.ws = null; net.id = null;
+        for (const id of [...others.keys()]) removeOther(id);
+        setNetStatus('Hors ligne — reconnexion…');
+        if (net.name) setTimeout(() => { if (!net.ws) connect(); }, 3000);
+      };
+      ws.onerror = () => setNetStatus('Serveur injoignable (mode solo)');
+    }
+
+    // Bouton « Jouer » : mémorise le pseudo, se connecte, verrouille le pointeur
+    const pseudoEl = document.getElementById('pseudo');
+    const playBtn = document.getElementById('play');
+    pseudoEl.value = localStorage.getItem('mawcraft.pseudo') || '';
+    function startPlay() {
+      net.name = (pseudoEl.value.trim() || 'Joueur').slice(0, 16);
+      localStorage.setItem('mawcraft.pseudo', net.name);
+      if (!net.ws) connect();
+      // le champ pseudo / le bouton ne doivent plus capter le clavier une fois en jeu,
+      // sinon les touches de déplacement ne parviennent jamais au jeu
+      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+      if (IS_TOUCH) {
+        // pas de verrouillage de pointeur sur tactile : on affiche les commandes
+        touchActive = true;
+        overlay.style.display = 'none';
+        touchUI.style.display = 'block';
+      } else {
+        const req = renderer.domElement.requestPointerLock();
+        if (req && req.catch) req.catch(() => { }); // ignore un éventuel rejet du verrouillage
+      }
+    }
+    // Le clic sur le bouton « Jouer » remonte jusqu'à l'overlay, qui appelle startPlay().
+    pseudoEl.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); startPlay(); }
+    });
+
+    // Câblage des commandes tactiles (uniquement si appareil tactile)
+    if (IS_TOUCH) {
+      const joy = document.getElementById('joy');
+      const knob = document.getElementById('joyknob');
+      const look = document.getElementById('lookzone');
+      const R = 45; // rayon utile du joystick en px
+
+      let joyId = null;
+      joy.addEventListener('pointerdown', e => {
+        joyId = e.pointerId; joy.setPointerCapture(e.pointerId); e.preventDefault();
+      });
+      joy.addEventListener('pointermove', e => {
+        if (e.pointerId !== joyId) return;
+        const r = joy.getBoundingClientRect();
+        let dx = e.clientX - (r.left + r.width / 2);
+        let dy = e.clientY - (r.top + r.height / 2);
+        const len = Math.hypot(dx, dy) || 1;
+        if (len > R) { dx = dx / len * R; dy = dy / len * R; }
+        knob.style.transform = `translate(${dx}px, ${dy}px)`;
+        moveInput.x = dx / R;   // droite = +
+        moveInput.y = -dy / R;  // haut = avancer
+      });
+      const joyEnd = e => {
+        if (e.pointerId !== joyId) return;
+        joyId = null; moveInput.x = moveInput.y = 0; knob.style.transform = 'translate(0,0)';
+      };
+      joy.addEventListener('pointerup', joyEnd);
+      joy.addEventListener('pointercancel', joyEnd);
+
+      let lookId = null, lx = 0, ly = 0;
+      look.addEventListener('pointerdown', e => {
+        lookId = e.pointerId; lx = e.clientX; ly = e.clientY;
+        look.setPointerCapture(e.pointerId); e.preventDefault();
+      });
+      look.addEventListener('pointermove', e => {
+        if (e.pointerId !== lookId) return;
+        const dx = e.clientX - lx, dy = e.clientY - ly;
+        lx = e.clientX; ly = e.clientY;
+        player.yaw -= dx * 0.005;
+        player.pitch -= dy * 0.005;
+        player.pitch = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, player.pitch));
+      });
+      const lookEnd = e => { if (e.pointerId === lookId) lookId = null; };
+      look.addEventListener('pointerup', lookEnd);
+      look.addEventListener('pointercancel', lookEnd);
+
+      const bind = (id, onDown, onUp) => {
+        const el = document.getElementById(id);
+        el.addEventListener('pointerdown', e => { e.preventDefault(); onDown(); });
+        if (onUp) {
+          el.addEventListener('pointerup', onUp);
+          el.addEventListener('pointercancel', onUp);
+        }
+      };
+      bind('btnJump', () => { touchJump = true; }, () => { touchJump = false; });
+      bind('btnBreak', () => breakBlock());
+      bind('btnPlace', () => placeBlock());
+      bind('btnPause', () => {
+        touchActive = false;
+        touchUI.style.display = 'none';
+        overlay.style.display = 'flex';
+      });
+    }
+
+    // ---------- Boucle de jeu ----------
+    let lastMoveSent = 0;
+    let lastTime = performance.now();
+    function tick() {
+      requestAnimationFrame(tick);
+      const now = performance.now();
+      const dt = Math.min((now - lastTime) / 1000, 0.05);
+      lastTime = now;
+
+      fpsFrames++;
+      if (now - fpsTime > 500) {
+        fps = Math.round(fpsFrames * 1000 / (now - fpsTime));
+        fpsFrames = 0; fpsTime = now;
+        updateInfo();
+      }
+
+      updateChunkStreaming();
+      updateOthers(dt);
+      if (now - lastMoveSent > 66) { lastMoveSent = now; sendMove(); }
+
+      player.inWater = getBlock(
+        Math.floor(player.pos.x), Math.floor(player.pos.y + 0.4), Math.floor(player.pos.z)
+      ) === WATER;
+
+      if (isPlaying()) {
+        let forward = (keys.has('KeyW') || keys.has('KeyZ') ? 1 : 0) - (keys.has('KeyS') ? 1 : 0) + moveInput.y;
+        let strafe = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') || keys.has('KeyQ') ? 1 : 0) + moveInput.x;
+        forward = Math.max(-1, Math.min(1, forward));
+        strafe = Math.max(-1, Math.min(1, strafe));
+        const sprint = keys.has('ShiftLeft') || keys.has('ShiftRight') ? SPRINT_MULT : 1;
+        const speed = SPEED * sprint * (player.inWater ? 0.6 : 1);
+        const sin = Math.sin(player.yaw), cos = Math.cos(player.yaw);
+        const dx = (-sin * forward + cos * strafe);
+        const dz = (-cos * forward - sin * strafe);
+        const moving = Math.abs(forward) > 0.05 || Math.abs(strafe) > 0.05;
+        const len = Math.hypot(dx, dz) || 1;
+        player.vel.x = (dx / len) * speed * (moving ? 1 : 0);
+        player.vel.z = (dz / len) * speed * (moving ? 1 : 0);
+        if (keys.has('Space') || touchJump) {
+          if (player.inWater) player.vel.y = Math.min(player.vel.y + 30 * dt, 4);
+          else if (player.onGround) player.vel.y = JUMP_SPEED;
+        }
+      } else {
+        player.vel.x = player.vel.z = 0;
+      }
+
+      if (player.inWater) {
+        player.vel.y -= GRAVITY * 0.35 * dt;
+        player.vel.y = Math.max(player.vel.y, -3.5);
+      } else {
+        player.vel.y -= GRAVITY * dt;
+        player.vel.y = Math.max(player.vel.y, -50);
+      }
+
+      player.onGround = false;
+      for (const [axis, v] of [['x', player.vel.x], ['y', player.vel.y], ['z', player.vel.z]]) {
+        if (!v) continue;
+        player.pos[axis] += v * dt;
+        if (collides(player.pos)) {
+          player.pos[axis] -= v * dt;
+          if (axis === 'y') {
+            if (v < 0) player.onGround = true;
+            player.vel.y = 0;
+          }
+        }
+      }
+      if (player.pos.y < -20) {
+        player.pos.y = HEIGHT;
+        player.vel.set(0, 0, 0);
+      }
+
+      camera.position.set(player.pos.x, player.pos.y + player.eye, player.pos.z);
+      camera.rotation.set(0, 0, 0);
+      camera.rotateY(player.yaw);
+      camera.rotateX(player.pitch);
+
+      // teinte bleutée quand la tête est sous l'eau
+      const headInWater = getBlock(
+        Math.floor(camera.position.x), Math.floor(camera.position.y), Math.floor(camera.position.z)
+      ) === WATER;
+      scene.background.set(headInWater ? 0x2a5ecf : SKY);
+      scene.fog.color.set(headInWater ? 0x2a5ecf : SKY);
+      scene.fog.near = headInWater ? 1 : RENDER_DIST * CHUNK * 0.55;
+      scene.fog.far = headInWater ? 18 : RENDER_DIST * CHUNK * 0.95;
+
+      const target = isPlaying() ? pickBlock() : null;
+      highlight.visible = !!target;
+      if (target) highlight.position.set(target.block[0] + 0.5, target.block[1] + 0.5, target.block[2] + 0.5);
+
+      renderer.render(scene, camera);
+    }
+    tick();
+
+    addEventListener('resize', () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+  </script>
 </body>
+
 </html>

@@ -7,6 +7,8 @@ et le projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+## [1.0.1] - 2026-11-04
+
 ### Ajouté
 
 - **Multijoueur (Phase 1)** : une même seed = un monde partagé.
@@ -18,6 +20,14 @@ et le projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
   - Champ pseudo + bouton « Jouer », reconnexion automatique, repli en mode solo
     si le serveur est absent.
   - Guide de déploiement/mise à jour `docs/DEPLOIEMENT.md` (Ubuntu 22.04 + nginx).
+- **Commandes tactiles** sur les appareils à pointeur tactile : joystick de
+  déplacement, zone de visée, boutons sauter / casser / poser / pause.
+
+### Modifié
+
+- README propre au projet : commandes tactiles, variables d'environnement `PORT`
+  et `HOST` du serveur, prérequis, tests, déploiement et licence.
+- Version du serveur (`server/package.json`) passée à `1.0.1`.
 
 ## [1.0.0] - 2026-07-05
 
@@ -36,5 +46,6 @@ et le projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
 - Rejouabilité déterministe via le paramètre d'URL `?seed=`.
 - Labo de sécurité pédagogique isolé `reverse-shell-lab/` (Docker).
 
-[Non publié]: https://example.com/MawCraft/compare/v1.0.0...HEAD
-[1.0.0]: https://example.com/MawCraft/releases/tag/v1.0.0
+[Non publié]: https://github.com/mawena/MawCraft/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/mawena/MawCraft/releases/tag/v1.0.1
+[1.0.0]: https://github.com/mawena/MawCraft/tree/4e0a163

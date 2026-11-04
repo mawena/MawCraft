@@ -1,9 +1,10 @@
 # ⛏ MawCraft
 
-Un mini-Minecraft jouable dans le navigateur : un monde voxel infini généré
-par _seed_, écrit en **JavaScript vanilla** avec [Three.js](https://threejs.org/).
-Tout le jeu tient dans un seul fichier [`index.html`](index.html) — aucune
-compilation, aucune dépendance à installer.
+Un mini-Minecraft jouable dans le navigateur, sur ordinateur comme sur écran
+tactile : un monde voxel infini généré par _seed_, écrit en **JavaScript vanilla**
+avec [Three.js](https://threejs.org/). Tout le jeu tient dans un seul fichier
+[`index.html`](index.html), sans compilation ni dépendance à installer. Un petit
+serveur WebSocket optionnel ([`server/`](server/)) ajoute le multijoueur.
 
 ## ✨ Fonctionnalités
 
@@ -16,8 +17,26 @@ compilation, aucune dépendance à installer.
 - **Atlas de textures pixel-art** généré par code (rien à télécharger).
 - **Physique** simple : gravité, saut, collisions, sprint.
 - **HUD de debug** (position, chunk, bloc sélectionné) et barre de blocs (hotbar).
-- **Multijoueur** : même seed = même monde partagé. On se voit bouger en temps réel,
-  les blocs cassés/posés sont synchronisés et **sauvegardés** entre les sessions.
+- **Commandes tactiles** sur mobile et tablette : joystick, zone de visée, boutons
+  sauter / casser / poser / pause.
+- **Multijoueur** : même seed = même monde partagé. On se voit bouger en temps réel
+  (avatar + pseudo), les blocs cassés/posés sont synchronisés et **sauvegardés** entre
+  les sessions. Sans serveur, le jeu bascule en mode solo.
+
+## 🛠 Stack technique
+
+- **Client** : JavaScript vanilla (modules ES), [Three.js](https://threejs.org/) `0.160.0`
+  chargé par _import map_ depuis le CDN unpkg, aucune étape de build.
+- **Terrain** : génération par bruit seedé maison.
+- **Serveur multijoueur** : Node.js (≥ 18) avec la bibliothèque [`ws`](https://github.com/websockets/ws),
+  dépendances gérées avec pnpm.
+
+## 📋 Prérequis
+
+- Un navigateur moderne (modules ES et WebGL).
+- Python 3 (ou n'importe quel serveur HTTP statique) pour servir le jeu en local.
+- Une connexion Internet au premier chargement (Three.js vient du CDN unpkg).
+- Pour le multijoueur uniquement : Node.js 18 ou plus récent et pnpm.
 
 ## 🚀 Lancer le jeu
 
@@ -30,14 +49,17 @@ python3 -m http.server 8000
 # puis ouvrez http://localhost:8000/ dans le navigateur
 ```
 
-> Three.js est chargé depuis le CDN unpkg — une connexion Internet est nécessaire
-> au premier chargement.
+Entrez un pseudo (facultatif, « Joueur » par défaut), puis cliquez sur **Jouer** ou
+appuyez sur `Entrée`. Sur ordinateur, le curseur est alors verrouillé ; sur un
+écran tactile, les commandes tactiles s'affichent. Le pseudo est mémorisé dans le
+navigateur (`localStorage`).
 
-Sans serveur, le jeu tourne en **solo** (il affiche « mode solo » et reste jouable).
+Sans serveur multijoueur, le jeu affiche « Serveur injoignable (mode solo) » et
+reste entièrement jouable.
 
 ## 🌍 Jouer à plusieurs (multijoueur)
 
-Il faut lancer le petit serveur WebSocket du dossier [`server/`](server/) :
+Lancez le serveur WebSocket du dossier [`server/`](server/) :
 
 ```bash
 cd server
@@ -47,13 +69,27 @@ pnpm start      # écoute sur ws://127.0.0.1:8080
 
 Ouvrez ensuite le jeu (servi par le serveur HTTP local), entrez un pseudo, cliquez
 **Jouer**. Toute personne ouvrant la **même seed** rejoint le même monde, s'y voit,
-et partage les blocs — qui sont sauvegardés dans `server/data/world-<seed>.json`.
+et partage les blocs, qui sont sauvegardés dans `server/data/world-<seed>.json`.
 
-En local, le client se connecte automatiquement à `ws://<hôte>:8080` ; en
-production (HTTPS), à `wss://<domaine>/ws` via nginx. Voir
-[docs/DEPLOIEMENT.md](docs/DEPLOIEMENT.md) pour l'hébergement.
+Le client choisit l'adresse du serveur tout seul :
+
+- page servie en HTTP (local) : `ws://<hôte de la page>:8080` ;
+- page servie en HTTPS (production) : `wss://<domaine>/ws`, relayé par nginx.
+
+## ⚙️ Configuration
+
+Le serveur multijoueur lit deux variables d'environnement facultatives :
+
+| Variable | Rôle |
+| -------- | ---- |
+| `PORT`   | Port d'écoute du serveur WebSocket (8080 par défaut). |
+| `HOST`   | Adresse d'écoute (`127.0.0.1` par défaut : derrière nginx, localhost uniquement). |
+
+Le client n'a rien à configurer.
 
 ## 🎮 Commandes
+
+### Clavier et souris
 
 | Touche / Action    | Effet                          |
 | ------------------ | ------------------------------ |
@@ -65,13 +101,25 @@ production (HTTPS), à `wss://<domaine>/ws` via nginx. Voir
 | `1`–`7` ou molette | Choisir un bloc dans la barre  |
 | `Échap`            | Pause / libérer le curseur     |
 
-Cliquez sur l'écran pour verrouiller le curseur et commencer à jouer.
+### Écran tactile
+
+Les commandes tactiles s'activent automatiquement sur les appareils à pointeur
+tactile.
+
+| Élément               | Effet                        |
+| --------------------- | ---------------------------- |
+| Joystick (à gauche)   | Se déplacer                  |
+| Zone de droite        | Regarder autour de soi       |
+| Bouton `⭡`            | Sauter / nager               |
+| Bouton `⛏`            | Casser un bloc               |
+| Bouton `▣`            | Poser un bloc                |
+| Bouton `☰`            | Pause                        |
 
 ## 🌱 Rejouer le même monde
 
 Le monde est déterministe : ajoutez `?seed=12345` à l'URL pour régénérer
-exactement le même terrain. Sans paramètre, une seed aléatoire est choisie à
-chaque partie.
+exactement le même terrain. Sans paramètre, une seed aléatoire est choisie et
+inscrite dans l'URL : il suffit de partager ce lien pour jouer dans le même monde.
 
 ```
 http://localhost:8000/?seed=12345
@@ -84,7 +132,8 @@ MawCraft/
 ├── index.html          # Le jeu complet (Three.js, un seul fichier)
 ├── server/             # Serveur multijoueur Node.js (WebSocket)
 │   ├── server.js
-│   └── package.json
+│   ├── package.json
+│   └── pnpm-lock.yaml
 ├── docs/
 │   └── DEPLOIEMENT.md  # Guide de déploiement/mise à jour (Ubuntu + nginx)
 ├── reverse-shell-lab/  # Labo de sécurité pédagogique isolé (voir son README)
@@ -97,11 +146,17 @@ Le dossier [`reverse-shell-lab/`](reverse-shell-lab/) est un exercice de sécuri
 défensive **indépendant du jeu** : un banc d'essai Docker entièrement isolé pour
 comprendre et détecter un reverse shell. Voir [son README](reverse-shell-lab/README.md).
 
-## 🛠 Stack technique
+## 🧪 Tests
 
-- [Three.js](https://threejs.org/) `0.160.0` (via import map / CDN unpkg)
-- JavaScript vanilla (modules ES), aucune étape de build
-- Génération de terrain par bruit seedé maison
+Le dépôt ne contient pas de tests automatisés. Pour vérifier une modification,
+servez le dossier en local et jouez avec une seed fixe (`?seed=12345`).
+
+## 📦 Déploiement
+
+Le guide [docs/DEPLOIEMENT.md](docs/DEPLOIEMENT.md) décrit l'installation en
+production (Ubuntu, Node.js 20 LTS, service systemd pour le serveur, nginx pour
+servir `index.html` et relayer `/ws` vers le serveur WebSocket), les mises à jour,
+les sauvegardes des mondes et le dépannage.
 
 ## 🤝 Contribuer
 
@@ -109,5 +164,4 @@ Voir [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## 📄 Licence
 
-Projet réalisé par **mawena**. Ajoutez un fichier `LICENSE` pour définir les
-conditions de réutilisation.
+Aucune licence n'est déclarée dans ce dépôt. Projet réalisé par **mawena**.

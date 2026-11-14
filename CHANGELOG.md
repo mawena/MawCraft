@@ -7,6 +7,11 @@ et le projet suit le [versionnage sémantique](https://semver.org/lang/fr/).
 
 ## [Non publié]
 
+### Retiré
+
+- `reverse-shell-lab/`, labo de sécurité sans rapport avec le jeu, déplacé dans un dépôt à part.
+- `.claude/settings.json`, réglage local d'un assistant de code, désormais ignoré.
+
 ## [1.0.1] - 2026-11-04
 
 ### Ajouté

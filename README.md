@@ -136,15 +136,10 @@ MawCraft/
 │   └── pnpm-lock.yaml
 ├── docs/
 │   └── DEPLOIEMENT.md  # Guide de déploiement/mise à jour (Ubuntu + nginx)
-├── reverse-shell-lab/  # Labo de sécurité pédagogique isolé (voir son README)
 ├── README.md
 ├── CHANGELOG.md
 └── CONTRIBUTING.md
 ```
-
-Le dossier [`reverse-shell-lab/`](reverse-shell-lab/) est un exercice de sécurité
-défensive **indépendant du jeu** : un banc d'essai Docker entièrement isolé pour
-comprendre et détecter un reverse shell. Voir [son README](reverse-shell-lab/README.md).
 
 ## 🧪 Tests
 

@@ -7,3 +7,6 @@ server/data/
 # Logs & divers
 *.log
 .DS_Store
+
+# Réglages locaux des assistants de code
+.claude/

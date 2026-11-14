@@ -164,4 +164,4 @@ Voir [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## 📄 Licence
 
-Aucune licence n'est déclarée dans ce dépôt. Projet réalisé par **mawena**.
+Code publié sous licence MIT : voir [LICENSE](LICENSE). Projet réalisé par **mawena**.

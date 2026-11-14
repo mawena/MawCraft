@@ -49,9 +49,3 @@ Ouvrez une issue en précisant :
 - la seed utilisée (`?seed=...`) si le bug dépend du monde ;
 - le navigateur et sa version ;
 - les erreurs éventuelles de la console.
-
-## Le dossier `reverse-shell-lab/`
-
-Ce sous-dossier est un exercice de **sécurité défensive** entièrement isolé,
-indépendant du jeu. Toute contribution le concernant doit rester dans ce cadre
-pédagogique et légitime (voir son [README](reverse-shell-lab/README.md)).
